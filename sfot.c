@@ -1,5 +1,13 @@
-#include "common.h"
+#include "sfotlib.h"
 
 int main(){
-  return 0; 
+
+	ResetCpu();
+	InitialiseMem();
+	Execute(2);
+	
+	printf("%d\n", cpu.A);
+	
+	return 0;
+ 
 }

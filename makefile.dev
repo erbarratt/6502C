@@ -1,0 +1,10 @@
+.PHONY: all
+all: sfot
+sfot: sfot.o sfotlib.o
+		gcc -Wextra -Wconversion -pedantic -o sfot sfot.o sfotlib.o -O3 -std=gnu99;
+sfot.o: sfot.c sfotlib.h
+		gcc -Wextra -Wconversion -pedantic -c -g sfot.c -O3 -std=gnu99;
+sfotlib.o: sfotlib.c sfotlib.h
+		gcc -Wextra -Wconversion -pedantic -c -g sfotlib.c -O3 -std=gnu99;
+clean :
+		rm *.o
