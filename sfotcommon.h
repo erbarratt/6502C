@@ -9,3 +9,5 @@ extern char ANSI_COLOR_CYAN[];
 extern char ANSI_COLOR_RESET[];
 
 void colorSet(char *col);
+void printOut(char *str, void *bound, TYPE t, char *col);
+void printOutErr(char *str, void *bound, TYPE t);

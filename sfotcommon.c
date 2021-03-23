@@ -46,3 +46,84 @@ char ANSI_COLOR_RESET[] = "\x1b[0m";
 		}
 		
 	}
+	
+/**
+* Print out based on silent switch
+* @param char *str The printf() message
+* @param char *bound Any additional string to pass to printf()
+* @param TYPE t The variable type to temp and pass to fprintf()
+* @param char *col The chosen colour
+* @return void
+*/
+	void printOut(char *str, void *bound, TYPE t, char *col){
+	
+		if(strlen(str) > 0){
+	
+			colorSet(col);
+			
+			switch(t){
+				case BYTE:
+					{
+						Byte passed = *(Byte*) bound;
+						printf(str, passed);
+					}
+				break;
+				case WORD:
+					{
+						Word passed = *(Word*) bound;
+						printf(str, passed);
+					}
+				break;
+				default:
+					{
+						char passed = *(char*) bound;
+						printf(str, passed);
+					}
+				break;
+			}
+			
+			puts(ANSI_COLOR_RESET);
+			
+		}
+		
+	}
+	
+/**
+* Print out to stderr based on silent switch
+* @param char *str The printf() message
+* @param void *bound Any additional string to pass to fprintf()
+* @param TYPE t The variable type to temp and pass to fprintf()
+* @return void
+*/
+	void printOutErr(char *str, void *bound, TYPE t){
+		
+		if(strlen(str) > 0){
+		
+			fprintf(stderr, "%s", ANSI_COLOR_RED);
+			
+			switch(t){
+				case BYTE:
+					{
+						Byte passed = *(Byte*) bound;
+						fprintf(stderr, str, passed);
+					}
+				break;
+				case WORD:
+					{
+						Word passed = *(Word*) bound;
+						fprintf(stderr, str, passed);
+					}
+				break;
+				default:
+					{
+						char passed = *(char*) bound;
+						fprintf(stderr, str, passed);
+					}
+				break;
+			}
+			
+			puts(ANSI_COLOR_RESET);
+			
+		}
+		
+	}
