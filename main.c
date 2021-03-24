@@ -12,70 +12,97 @@ RAM ram;
 Bus bus;
 CPU cpu;
 
-void ram_clear(){
-
-	printf("%sClear Ram.%s\n", ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
-
-	int i;
-	for(i = 0; i < MAX_MEM; i++){
+/**
+* Clear RAM by initialising to NOP instructions
+* @return void
+*/
+	void ram_clear(){
 	
-		bus.ram.data[i] = 0xEA;
+		printf("%sClear Ram.%s\n", ANSI_COLOR_YELLOW, ANSI_COLOR_RESET);
+	
+		int i;
+		for(i = 0; i < MAX_MEM; i++){
+		
+			bus.ram.data[i] = 0xEA;
+		
+		}
 	
 	}
 
-}
-
-
-
-void bus_add_devices()
-{
-
-	printf("%sAdded Ram device to bus.%s\n", ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
-	bus.ram = ram;
-
-}
-
-void bus_write(uint16_t addr, uint8_t data)
-{
-
-	bus.ram.data[addr] = data;
-
-}
-
-uint8_t bus_read(uint16_t addr, bool bReadOnly)
-{
+/**
+* Add "deives" to bus struct. May be used in future to change bus attached devices
+* @return void
+*/
+	void bus_add_devices()
+	{
 	
-	return bus.ram.data[addr];
+		printf("%sAdded Ram device to bus.%s\n", ANSI_COLOR_YELLOW, ANSI_COLOR_RESET);
+		bus.ram = ram;
 	
-}
+	}
 
-
+/**
+* Write to attached RAM through Bus
+* @return void
+*/
+	void bus_write(uint16_t addr, uint8_t data)
+	{
 	
-INSTRUCTION lookupM[256] = {
-	{ "BRK", &cpu_BRK, &cpu_IMM, 7 },	{ "ORA", &cpu_ORA, &cpu_IZX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 3 },	{ "ORA", &cpu_ORA, &cpu_ZP0, 3 },	{ "ASL", &cpu_ASL, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "PHP", &cpu_PHP, &cpu_IMP, 3 },	{ "ORA", &cpu_ORA, &cpu_IMM, 2 },	{ "ASL", &cpu_ASL, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ORA", &cpu_ORA, &cpu_ABS, 4 },	{ "ASL", &cpu_ASL, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
-	{ "BPL", &cpu_BPL, &cpu_REL, 2 },	{ "ORA", &cpu_ORA, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ORA", &cpu_ORA, &cpu_ZPX, 4 },	{ "ASL", &cpu_ASL, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "CLC", &cpu_CLC, &cpu_IMP, 2 },	{ "ORA", &cpu_ORA, &cpu_ABY, 4 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ORA", &cpu_ORA, &cpu_ABX, 4 },	{ "ASL", &cpu_ASL, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
-	{ "JSR", &cpu_JSR, &cpu_ABS, 6 },	{ "AND", &cpu_AND, &cpu_IZX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "BIT", &cpu_BIT, &cpu_ZP0, 3 },	{ "AND", &cpu_AND, &cpu_ZP0, 3 },	{ "ROL", &cpu_ROL, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "PLP", &cpu_PLP, &cpu_IMP, 4 },	{ "AND", &cpu_AND, &cpu_IMM, 2 },	{ "ROL", &cpu_ROL, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "BIT", &cpu_BIT, &cpu_ABS, 4 },	{ "AND", &cpu_AND, &cpu_ABS, 4 },	{ "ROL", &cpu_ROL, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
-	{ "BMI", &cpu_BMI, &cpu_REL, 2 },	{ "AND", &cpu_AND, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "AND", &cpu_AND, &cpu_ZPX, 4 },	{ "ROL", &cpu_ROL, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "SEC", &cpu_SEC, &cpu_IMP, 2 },	{ "AND", &cpu_AND, &cpu_ABY, 4 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "AND", &cpu_AND, &cpu_ABX, 4 },	{ "ROL", &cpu_ROL, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
-	{ "RTI", &cpu_RTI, &cpu_IMP, 6 },	{ "EOR", &cpu_EOR, &cpu_IZX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 3 },	{ "EOR", &cpu_EOR, &cpu_ZP0, 3 },	{ "LSR", &cpu_LSR, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "PHA", &cpu_PHA, &cpu_IMP, 3 },	{ "EOR", &cpu_EOR, &cpu_IMM, 2 },	{ "LSR", &cpu_LSR, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "JMP", &cpu_JMP, &cpu_ABS, 3 },	{ "EOR", &cpu_EOR, &cpu_ABS, 4 },	{ "LSR", &cpu_LSR, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
-	{ "BVC", &cpu_BVC, &cpu_REL, 2 },	{ "EOR", &cpu_EOR, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "EOR", &cpu_EOR, &cpu_ZPX, 4 },	{ "LSR", &cpu_LSR, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "CLI", &cpu_CLI, &cpu_IMP, 2 },	{ "EOR", &cpu_EOR, &cpu_ABY, 4 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "EOR", &cpu_EOR, &cpu_ABX, 4 },	{ "LSR", &cpu_LSR, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
-	{ "RTS", &cpu_RTS, &cpu_IMP, 6 },	{ "ADC", &cpu_ADC, &cpu_IZX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 3 },	{ "ADC", &cpu_ADC, &cpu_ZP0, 3 },	{ "ROR", &cpu_ROR, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "PLA", &cpu_PLA, &cpu_IMP, 4 },	{ "ADC", &cpu_ADC, &cpu_IMM, 2 },	{ "ROR", &cpu_ROR, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "JMP", &cpu_JMP, &cpu_IND, 5 },	{ "ADC", &cpu_ADC, &cpu_ABS, 4 },	{ "ROR", &cpu_ROR, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
-	{ "BVS", &cpu_BVS, &cpu_REL, 2 },	{ "ADC", &cpu_ADC, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ADC", &cpu_ADC, &cpu_ZPX, 4 },	{ "ROR", &cpu_ROR, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "SEI", &cpu_SEI, &cpu_IMP, 2 },	{ "ADC", &cpu_ADC, &cpu_ABY, 4 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ADC", &cpu_ADC, &cpu_ABX, 4 },	{ "ROR", &cpu_ROR, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
-	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "STA", &cpu_STA, &cpu_IZX, 6 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "STY", &cpu_STY, &cpu_ZP0, 3 },	{ "STA", &cpu_STA, &cpu_ZP0, 3 },	{ "STX", &cpu_STX, &cpu_ZP0, 3 },	{ "???", &cpu_XXX, &cpu_IMP, 3 },	{ "DEY", &cpu_DEY, &cpu_IMP, 2 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "TXA", &cpu_TXA, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "STY", &cpu_STY, &cpu_ABS, 4 },	{ "STA", &cpu_STA, &cpu_ABS, 4 },	{ "STX", &cpu_STX, &cpu_ABS, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },
-	{ "BCC", &cpu_BCC, &cpu_REL, 2 },	{ "STA", &cpu_STA, &cpu_IZY, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "STY", &cpu_STY, &cpu_ZPX, 4 },	{ "STA", &cpu_STA, &cpu_ZPX, 4 },	{ "STX", &cpu_STX, &cpu_ZPY, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },	{ "TYA", &cpu_TYA, &cpu_IMP, 2 },	{ "STA", &cpu_STA, &cpu_ABY, 5 },	{ "TXS", &cpu_TXS, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "???", &cpu_NOP, &cpu_IMP, 5 },	{ "STA", &cpu_STA, &cpu_ABX, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },
-	{ "LDY", &cpu_LDY, &cpu_IMM, 2 },	{ "LDA", &cpu_LDA, &cpu_IZX, 6 },	{ "LDX", &cpu_LDX, &cpu_IMM, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "LDY", &cpu_LDY, &cpu_ZP0, 3 },	{ "LDA", &cpu_LDA, &cpu_ZP0, 3 },	{ "LDX", &cpu_LDX, &cpu_ZP0, 3 },	{ "???", &cpu_XXX, &cpu_IMP, 3 },	{ "TAY", &cpu_TAY, &cpu_IMP, 2 },	{ "LDA", &cpu_LDA, &cpu_IMM, 2 },	{ "TAX", &cpu_TAX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "LDY", &cpu_LDY, &cpu_ABS, 4 },	{ "LDA", &cpu_LDA, &cpu_ABS, 4 },	{ "LDX", &cpu_LDX, &cpu_ABS, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },
-	{ "BCS", &cpu_BCS, &cpu_REL, 2 },	{ "LDA", &cpu_LDA, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "LDY", &cpu_LDY, &cpu_ZPX, 4 },	{ "LDA", &cpu_LDA, &cpu_ZPX, 4 },	{ "LDX", &cpu_LDX, &cpu_ZPY, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },	{ "CLV", &cpu_CLV, &cpu_IMP, 2 },	{ "LDA", &cpu_LDA, &cpu_ABY, 4 },	{ "TSX", &cpu_TSX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },	{ "LDY", &cpu_LDY, &cpu_ABX, 4 },	{ "LDA", &cpu_LDA, &cpu_ABX, 4 },	{ "LDX", &cpu_LDX, &cpu_ABY, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },
-	{ "CPY", &cpu_CPY, &cpu_IMM, 2 },	{ "CMP", &cpu_CMP, &cpu_IZX, 6 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "CPY", &cpu_CPY, &cpu_ZP0, 3 },	{ "CMP", &cpu_CMP, &cpu_ZP0, 3 },	{ "DEC", &cpu_DEC, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "INY", &cpu_INY, &cpu_IMP, 2 },	{ "CMP", &cpu_CMP, &cpu_IMM, 2 },	{ "DEX", &cpu_DEX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "CPY", &cpu_CPY, &cpu_ABS, 4 },	{ "CMP", &cpu_CMP, &cpu_ABS, 4 },	{ "DEC", &cpu_DEC, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
-	{ "BNE", &cpu_BNE, &cpu_REL, 2 },	{ "CMP", &cpu_CMP, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "CMP", &cpu_CMP, &cpu_ZPX, 4 },	{ "DEC", &cpu_DEC, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "CLD", &cpu_CLD, &cpu_IMP, 2 },	{ "CMP", &cpu_CMP, &cpu_ABY, 4 },	{ "NOP", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "CMP", &cpu_CMP, &cpu_ABX, 4 },	{ "DEC", &cpu_DEC, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
-	{ "CPX", &cpu_CPX, &cpu_IMM, 2 },	{ "SBC", &cpu_SBC, &cpu_IZX, 6 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "CPX", &cpu_CPX, &cpu_ZP0, 3 },	{ "SBC", &cpu_SBC, &cpu_ZP0, 3 },	{ "INC", &cpu_INC, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "INX", &cpu_INX, &cpu_IMP, 2 },	{ "SBC", &cpu_SBC, &cpu_IMM, 2 },	{ "NOP", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_SBC, &cpu_IMP, 2 },	{ "CPX", &cpu_CPX, &cpu_ABS, 4 },	{ "SBC", &cpu_SBC, &cpu_ABS, 4 },	{ "INC", &cpu_INC, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
-	{ "BEQ", &cpu_BEQ, &cpu_REL, 2 },	{ "SBC", &cpu_SBC, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "SBC", &cpu_SBC, &cpu_ZPX, 4 },	{ "INC", &cpu_INC, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "SED", &cpu_SED, &cpu_IMP, 2 },	{ "SBC", &cpu_SBC, &cpu_ABY, 4 },	{ "NOP", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "SBC", &cpu_SBC, &cpu_ABX, 4 },	{ "INC", &cpu_INC, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 }
-};
+		bus.ram.data[addr] = data;
+	
+	}
 
-INSTRUCTION lookup(uint8_t opCode)
-{
+/**
+* Read RAM through Bus
+* @return uint8_t
+*/
+	uint8_t bus_read(uint16_t addr, bool bReadOnly)
+	{
+		
+		return bus.ram.data[addr];
+		
+	}
+	
+// Assembles the translation table. It's big, it's ugly, but it yields a convenient way
+// to emulate the 6502. I'm certain there are some "code-golf" strategies to reduce this
+// but I've deliberately kept it verbose for study and alteration
 
-	return lookupM[opCode];
+// It is 16x16 entries. This gives 256 instructions. It is arranged to that the bottom
+// 4 bits of the instruction choose the column, and the top 4 bits choose the row.
 
-}
+// For convenience to get function pointers to members of this class, I'm using this
+// or else it will be much much larger :D
+
+// The table is one big initialiser list of initialiser lists...
+	INSTRUCTION lookupM[256] = {
+		{ "BRK", &cpu_BRK, &cpu_IMM, 7 },	{ "ORA", &cpu_ORA, &cpu_IZX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 3 },	{ "ORA", &cpu_ORA, &cpu_ZP0, 3 },	{ "ASL", &cpu_ASL, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "PHP", &cpu_PHP, &cpu_IMP, 3 },	{ "ORA", &cpu_ORA, &cpu_IMM, 2 },	{ "ASL", &cpu_ASL, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ORA", &cpu_ORA, &cpu_ABS, 4 },	{ "ASL", &cpu_ASL, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
+		{ "BPL", &cpu_BPL, &cpu_REL, 2 },	{ "ORA", &cpu_ORA, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ORA", &cpu_ORA, &cpu_ZPX, 4 },	{ "ASL", &cpu_ASL, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "CLC", &cpu_CLC, &cpu_IMP, 2 },	{ "ORA", &cpu_ORA, &cpu_ABY, 4 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ORA", &cpu_ORA, &cpu_ABX, 4 },	{ "ASL", &cpu_ASL, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
+		{ "JSR", &cpu_JSR, &cpu_ABS, 6 },	{ "AND", &cpu_AND, &cpu_IZX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "BIT", &cpu_BIT, &cpu_ZP0, 3 },	{ "AND", &cpu_AND, &cpu_ZP0, 3 },	{ "ROL", &cpu_ROL, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "PLP", &cpu_PLP, &cpu_IMP, 4 },	{ "AND", &cpu_AND, &cpu_IMM, 2 },	{ "ROL", &cpu_ROL, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "BIT", &cpu_BIT, &cpu_ABS, 4 },	{ "AND", &cpu_AND, &cpu_ABS, 4 },	{ "ROL", &cpu_ROL, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
+		{ "BMI", &cpu_BMI, &cpu_REL, 2 },	{ "AND", &cpu_AND, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "AND", &cpu_AND, &cpu_ZPX, 4 },	{ "ROL", &cpu_ROL, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "SEC", &cpu_SEC, &cpu_IMP, 2 },	{ "AND", &cpu_AND, &cpu_ABY, 4 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "AND", &cpu_AND, &cpu_ABX, 4 },	{ "ROL", &cpu_ROL, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
+		{ "RTI", &cpu_RTI, &cpu_IMP, 6 },	{ "EOR", &cpu_EOR, &cpu_IZX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 3 },	{ "EOR", &cpu_EOR, &cpu_ZP0, 3 },	{ "LSR", &cpu_LSR, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "PHA", &cpu_PHA, &cpu_IMP, 3 },	{ "EOR", &cpu_EOR, &cpu_IMM, 2 },	{ "LSR", &cpu_LSR, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "JMP", &cpu_JMP, &cpu_ABS, 3 },	{ "EOR", &cpu_EOR, &cpu_ABS, 4 },	{ "LSR", &cpu_LSR, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
+		{ "BVC", &cpu_BVC, &cpu_REL, 2 },	{ "EOR", &cpu_EOR, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "EOR", &cpu_EOR, &cpu_ZPX, 4 },	{ "LSR", &cpu_LSR, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "CLI", &cpu_CLI, &cpu_IMP, 2 },	{ "EOR", &cpu_EOR, &cpu_ABY, 4 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "EOR", &cpu_EOR, &cpu_ABX, 4 },	{ "LSR", &cpu_LSR, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
+		{ "RTS", &cpu_RTS, &cpu_IMP, 6 },	{ "ADC", &cpu_ADC, &cpu_IZX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 3 },	{ "ADC", &cpu_ADC, &cpu_ZP0, 3 },	{ "ROR", &cpu_ROR, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "PLA", &cpu_PLA, &cpu_IMP, 4 },	{ "ADC", &cpu_ADC, &cpu_IMM, 2 },	{ "ROR", &cpu_ROR, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "JMP", &cpu_JMP, &cpu_IND, 5 },	{ "ADC", &cpu_ADC, &cpu_ABS, 4 },	{ "ROR", &cpu_ROR, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
+		{ "BVS", &cpu_BVS, &cpu_REL, 2 },	{ "ADC", &cpu_ADC, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ADC", &cpu_ADC, &cpu_ZPX, 4 },	{ "ROR", &cpu_ROR, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "SEI", &cpu_SEI, &cpu_IMP, 2 },	{ "ADC", &cpu_ADC, &cpu_ABY, 4 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "ADC", &cpu_ADC, &cpu_ABX, 4 },	{ "ROR", &cpu_ROR, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
+		{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "STA", &cpu_STA, &cpu_IZX, 6 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "STY", &cpu_STY, &cpu_ZP0, 3 },	{ "STA", &cpu_STA, &cpu_ZP0, 3 },	{ "STX", &cpu_STX, &cpu_ZP0, 3 },	{ "???", &cpu_XXX, &cpu_IMP, 3 },	{ "DEY", &cpu_DEY, &cpu_IMP, 2 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "TXA", &cpu_TXA, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "STY", &cpu_STY, &cpu_ABS, 4 },	{ "STA", &cpu_STA, &cpu_ABS, 4 },	{ "STX", &cpu_STX, &cpu_ABS, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },
+		{ "BCC", &cpu_BCC, &cpu_REL, 2 },	{ "STA", &cpu_STA, &cpu_IZY, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "STY", &cpu_STY, &cpu_ZPX, 4 },	{ "STA", &cpu_STA, &cpu_ZPX, 4 },	{ "STX", &cpu_STX, &cpu_ZPY, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },	{ "TYA", &cpu_TYA, &cpu_IMP, 2 },	{ "STA", &cpu_STA, &cpu_ABY, 5 },	{ "TXS", &cpu_TXS, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "???", &cpu_NOP, &cpu_IMP, 5 },	{ "STA", &cpu_STA, &cpu_ABX, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },
+		{ "LDY", &cpu_LDY, &cpu_IMM, 2 },	{ "LDA", &cpu_LDA, &cpu_IZX, 6 },	{ "LDX", &cpu_LDX, &cpu_IMM, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "LDY", &cpu_LDY, &cpu_ZP0, 3 },	{ "LDA", &cpu_LDA, &cpu_ZP0, 3 },	{ "LDX", &cpu_LDX, &cpu_ZP0, 3 },	{ "???", &cpu_XXX, &cpu_IMP, 3 },	{ "TAY", &cpu_TAY, &cpu_IMP, 2 },	{ "LDA", &cpu_LDA, &cpu_IMM, 2 },	{ "TAX", &cpu_TAX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "LDY", &cpu_LDY, &cpu_ABS, 4 },	{ "LDA", &cpu_LDA, &cpu_ABS, 4 },	{ "LDX", &cpu_LDX, &cpu_ABS, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },
+		{ "BCS", &cpu_BCS, &cpu_REL, 2 },	{ "LDA", &cpu_LDA, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "LDY", &cpu_LDY, &cpu_ZPX, 4 },	{ "LDA", &cpu_LDA, &cpu_ZPX, 4 },	{ "LDX", &cpu_LDX, &cpu_ZPY, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },	{ "CLV", &cpu_CLV, &cpu_IMP, 2 },	{ "LDA", &cpu_LDA, &cpu_ABY, 4 },	{ "TSX", &cpu_TSX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },	{ "LDY", &cpu_LDY, &cpu_ABX, 4 },	{ "LDA", &cpu_LDA, &cpu_ABX, 4 },	{ "LDX", &cpu_LDX, &cpu_ABY, 4 },	{ "???", &cpu_XXX, &cpu_IMP, 4 },
+		{ "CPY", &cpu_CPY, &cpu_IMM, 2 },	{ "CMP", &cpu_CMP, &cpu_IZX, 6 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "CPY", &cpu_CPY, &cpu_ZP0, 3 },	{ "CMP", &cpu_CMP, &cpu_ZP0, 3 },	{ "DEC", &cpu_DEC, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "INY", &cpu_INY, &cpu_IMP, 2 },	{ "CMP", &cpu_CMP, &cpu_IMM, 2 },	{ "DEX", &cpu_DEX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "CPY", &cpu_CPY, &cpu_ABS, 4 },	{ "CMP", &cpu_CMP, &cpu_ABS, 4 },	{ "DEC", &cpu_DEC, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
+		{ "BNE", &cpu_BNE, &cpu_REL, 2 },	{ "CMP", &cpu_CMP, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "CMP", &cpu_CMP, &cpu_ZPX, 4 },	{ "DEC", &cpu_DEC, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "CLD", &cpu_CLD, &cpu_IMP, 2 },	{ "CMP", &cpu_CMP, &cpu_ABY, 4 },	{ "NOP", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "CMP", &cpu_CMP, &cpu_ABX, 4 },	{ "DEC", &cpu_DEC, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },
+		{ "CPX", &cpu_CPX, &cpu_IMM, 2 },	{ "SBC", &cpu_SBC, &cpu_IZX, 6 },	{ "???", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "CPX", &cpu_CPX, &cpu_ZP0, 3 },	{ "SBC", &cpu_SBC, &cpu_ZP0, 3 },	{ "INC", &cpu_INC, &cpu_ZP0, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 5 },	{ "INX", &cpu_INX, &cpu_IMP, 2 },	{ "SBC", &cpu_SBC, &cpu_IMM, 2 },	{ "NOP", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_SBC, &cpu_IMP, 2 },	{ "CPX", &cpu_CPX, &cpu_ABS, 4 },	{ "SBC", &cpu_SBC, &cpu_ABS, 4 },	{ "INC", &cpu_INC, &cpu_ABS, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },
+		{ "BEQ", &cpu_BEQ, &cpu_REL, 2 },	{ "SBC", &cpu_SBC, &cpu_IZY, 5 },	{ "???", &cpu_XXX, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 8 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "SBC", &cpu_SBC, &cpu_ZPX, 4 },	{ "INC", &cpu_INC, &cpu_ZPX, 6 },	{ "???", &cpu_XXX, &cpu_IMP, 6 },	{ "SED", &cpu_SED, &cpu_IMP, 2 },	{ "SBC", &cpu_SBC, &cpu_ABY, 4 },	{ "NOP", &cpu_NOP, &cpu_IMP, 2 },	{ "???", &cpu_XXX, &cpu_IMP, 7 },	{ "???", &cpu_NOP, &cpu_IMP, 4 },	{ "SBC", &cpu_SBC, &cpu_ABX, 4 },	{ "INC", &cpu_INC, &cpu_ABX, 7 },	{ "???", &cpu_XXX, &cpu_IMP, 7 }
+	};
+
+/**
+* Return INSTRUCTION struct from lookup struct array
+* @return INSTRUCTION
+*/
+	INSTRUCTION lookup(uint8_t opCode)
+	{
+	
+		return lookupM[opCode];
+	
+	}
 
 uint8_t  cpuFetched     = 0x00;   // Represents the working input value to the ALU
 uint16_t cpuTemp        = 0x0000; // A convenience variable used everywhere
@@ -85,18 +112,21 @@ uint8_t  cpuOPCode      = 0x00;   // Is the instruction byte
 uint8_t  cpuCycles      = 0;	   // Counts how many cpuCycles the instruction has remaining
 uint32_t cpuClockCount  = 0;	   // A global accumulation of the number of clocks
 
-// This function sources the data used by the instruction into
-// a convenient numeric variable. Some instructions dont have to
-// fetch data as the source is implied by the instruction. For example
-// "INX" increments the X register. There is no additional data
-// required. For all other addressing modes, the data resides at
-// the location held within cpuAddrAbs, so it is read from there.
-// Immediate adress mode exploits this slightly, as that has
-// set cpuAddrAbs = cpu.PC + 1, so it fetches the data from the
-// next byte for example "LDA $FF" just loads the accumulator with
-// 256, i.e. no far reaching memory fetch is required. "cpuFetched"
-// is a variable global to the CPU, and is set by calling this
-// function. It also returns it for convenience.
+/**
+* This function sources the data used by the instruction into
+* a convenient numeric variable. Some instructions dont have to
+* fetch data as the source is implied by the instruction. For example
+* "INX" increments the X register. There is no additional data
+* required. For all other addressing modes, the data resides at
+* the location held within cpuAddrAbs, so it is read from there.
+* Immediate adress mode exploits this slightly, as that has
+* set cpuAddrAbs = cpu.PC + 1, so it fetches the data from the
+* next byte for example "LDA $FF" just loads the accumulator with
+* 256, i.e. no far reaching memory fetch is required. "cpuFetched"
+* is a variable global to the CPU, and is set by calling this
+* function. It also returns it for convenience.
+* @return uint8_t
+ */
 	uint8_t cpu_fetch()
 	{
 		INSTRUCTION lookupHere = lookup(cpuOPCode);
@@ -106,13 +136,19 @@ uint32_t cpuClockCount  = 0;	   // A global accumulation of the number of clocks
 		return cpuFetched;
 	}
 
-// Returns the value of a specific bit of the cpu.status register
+/**
+* Returns the value of a specific bit of the cpu.status register
+* @return uint8_t
+ */
 	uint8_t cpu_get_flag(FLAGS6502 f)
 	{
 		return ((cpu.status & f) > 0) ? 1 : 0;
 	}
 
-// Sets or clears a specific bit of the cpu.status register
+/**
+* Sets or clears a specific bit of the cpu.status register
+* @return uint8_t
+ */
 	void cpu_set_flag(FLAGS6502 f, bool v)
 	{
 	
@@ -124,19 +160,23 @@ uint32_t cpuClockCount  = 0;	   // A global accumulation of the number of clocks
 	
 	}
 
-uint8_t cpu_read(uint16_t addr)
-{
+/**
+* Read RAM through Cpu->Bus
+* @return uint8_t
+*/
+	uint8_t cpu_read(uint16_t addr)
+	{
+		return bus_read(addr, false);
+	}
 
-	return bus_read(addr, false);
-
-}
-
-void cpu_write(uint16_t addr, uint8_t data)
-{
-
-	bus_write(addr, data);
-
-}
+/**
+* Write to RAM through Cpu->Bus
+* @return void
+*/
+	void cpu_write(uint16_t addr, uint8_t data)
+	{
+		bus_write(addr, data);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////
 // EXTERNAL INPUTS
@@ -148,35 +188,35 @@ void cpu_write(uint16_t addr, uint8_t data)
 // allows the programmer to jump to a known and programmable location in the
 // memory to start executing from. Typically the programmer would set the value
 // at location 0xFFFC at compile time.
-void cpu_reset()
-{
-
-	printf("%sReset CPU.%s\n", ANSI_COLOR_BLUE, ANSI_COLOR_RESET);
-
-	// Get address to set program counter to
-	cpuAddrAbs = 0xFFFC;
-	uint16_t lo = (uint16_t)cpu_read(cpuAddrAbs + 0);
-	uint16_t hi = (uint16_t)cpu_read(cpuAddrAbs + 1);
-
-	// Set it
-	cpu.PC = (hi << 8) | lo;
-
-	// Reset internal registers
-	cpu.A = 0;
-	cpu.X = 0;
-	cpu.Y = 0;
-	cpu.SP = 0xFD;
-	cpu.status = 0x00 | U;
-
-	// Clear internal helper variables
-	cpuAddrRel = 0x0000;
-	cpuAddrAbs = 0x0000;
-	cpuFetched = 0x00;
-
-	// Reset takes time
-	cpuCycles = 8;
+	void cpu_reset()
+	{
 	
-}
+		printf("%sReset CPU.%s\n", ANSI_COLOR_YELLOW, ANSI_COLOR_RESET);
+	
+		// Get address to set program counter to
+			cpuAddrAbs = 0xFFFC;
+			uint16_t lo = (uint16_t)cpu_read(cpuAddrAbs + 0);
+			uint16_t hi = (uint16_t)cpu_read(cpuAddrAbs + 1);
+	
+		// Set it
+			cpu.PC = (hi << 8) | lo;
+	
+		// Reset internal registers
+			cpu.A = 0;
+			cpu.X = 0;
+			cpu.Y = 0;
+			cpu.SP = 0xFD;
+			cpu.status = 0x00 | U;
+	
+		// Clear internal helper variables
+			cpuAddrRel = 0x0000;
+			cpuAddrAbs = 0x0000;
+			cpuFetched = 0x00;
+	
+		// Reset takes time
+			cpuCycles = 8;
+		
+	}
 
 
 // Interrupt requests are a complex operation and only happen if the
@@ -192,140 +232,140 @@ void cpu_reset()
 // has happened, in a similar way to a reset, a programmable address
 // is read form hard coded location 0xFFFE, which is subsequently
 // set to the program counter.
-void cpu_irq()
-{
-	// If interrupts are allowed
-	if (cpu_get_flag(I) == 0)
+	void cpu_irq()
 	{
-		// Push the program counter to the stack. It's 16-bits dont
-		// forget so that takes two pushes
-		cpu_write(0x0100 + cpu.SP, (cpu.PC >> 8) & 0x00FF);
-		cpu.SP--;
-		cpu_write(0x0100 + cpu.SP, cpu.PC & 0x00FF);
-		cpu.SP--;
-
-		// Then Push the status register to the stack
-		cpu_set_flag(B, 0);
-		cpu_set_flag(U, 1);
-		cpu_set_flag(I, 1);
-		cpu_write(0x0100 + cpu.SP, cpu.status);
-		cpu.SP--;
-
-		// Read new program counter location from fixed address
-		cpuAddrAbs = 0xFFFE;
-		uint16_t lo = cpu_read(cpuAddrAbs + 0);
-		uint16_t hi = cpu_read(cpuAddrAbs + 1);
-		cpu.PC = (hi << 8) | lo;
-
-		// IRQs take time
-		cpuCycles = 7;
+		// If interrupts are allowed
+			if (cpu_get_flag(I) == 0)
+			{
+				// Push the program counter to the stack. It's 16-bits dont
+				// forget so that takes two pushes
+					cpu_write(0x0100 + cpu.SP, (cpu.PC >> 8) & 0x00FF);
+					cpu.SP--;
+					cpu_write(0x0100 + cpu.SP, cpu.PC & 0x00FF);
+					cpu.SP--;
+		
+				// Then Push the status register to the stack
+					cpu_set_flag(B, 0);
+					cpu_set_flag(U, 1);
+					cpu_set_flag(I, 1);
+					cpu_write(0x0100 + cpu.SP, cpu.status);
+					cpu.SP--;
+		
+				// Read new program counter location from fixed address
+					cpuAddrAbs = 0xFFFE;
+					uint16_t lo = cpu_read(cpuAddrAbs + 0);
+					uint16_t hi = cpu_read(cpuAddrAbs + 1);
+					cpu.PC = (hi << 8) | lo;
+		
+				// IRQs take time
+					cpuCycles = 7;
+			}
 	}
-}
 
 
 // A Non-Maskable Interrupt cannot be ignored. It behaves in exactly the
 // same way as a regular IRQ, but reads the new program counter address
 // form location 0xFFFA.
-void cpu_nmi()
-{
-	cpu_write(0x0100 + cpu.SP, (cpu.PC >> 8) & 0x00FF);
-	cpu.SP--;
-	cpu_write(0x0100 + cpu.SP, cpu.PC & 0x00FF);
-	cpu.SP--;
-
-	cpu_set_flag(B, 0);
-	cpu_set_flag(U, 1);
-	cpu_set_flag(I, 1);
-	cpu_write(0x0100 + cpu.SP, cpu.status);
-	cpu.SP--;
-
-	cpuAddrAbs = 0xFFFA;
-	uint16_t lo = cpu_read(cpuAddrAbs + 0);
-	uint16_t hi = cpu_read(cpuAddrAbs + 1);
-	cpu.PC = (hi << 8) | lo;
-
-	cpuCycles = 8;
-}
+	void cpu_nmi()
+	{
+		cpu_write(0x0100 + cpu.SP, (cpu.PC >> 8) & 0x00FF);
+		cpu.SP--;
+		cpu_write(0x0100 + cpu.SP, cpu.PC & 0x00FF);
+		cpu.SP--;
+	
+		cpu_set_flag(B, 0);
+		cpu_set_flag(U, 1);
+		cpu_set_flag(I, 1);
+		cpu_write(0x0100 + cpu.SP, cpu.status);
+		cpu.SP--;
+	
+		cpuAddrAbs = 0xFFFA;
+		uint16_t lo = cpu_read(cpuAddrAbs + 0);
+		uint16_t hi = cpu_read(cpuAddrAbs + 1);
+		cpu.PC = (hi << 8) | lo;
+	
+		cpuCycles = 8;
+	}
 
 // Perform one clock cycles worth of emulation
-void cpu_clock()
-{
-
-	printf("%sCPU Clock %d.%s\n", ANSI_COLOR_BLUE, cpuCycles, ANSI_COLOR_RESET);
-
-	// Each instruction requires a variable number of clock cycles to execute.
-	// In my emulation, I only care about the final result and so I perform
-	// the entire computation in one hit. In hardware, each clock cycle would
-	// perform "microcode" style transformations of the CPUs state.
-	//
-	// To remain compliant with connected devices, it's important that the
-	// emulation also takes "time" in order to execute instructions, so I
-	// implement that delay by simply counting down the cycles required by
-	// the instruction. When it reaches 0, the instruction is complete, and
-	// the next one is ready to be executed.
-		if (cpuCycles == 0)
-		{
-		
-			//wait for enter input
-				getchar();
-		
-			// Read next instruction byte. This 8-bit value is used to index
-			// the translation table to get the relevant information about
-			// how to implement the instruction
-				cpuOPCode = cpu_read(cpu.PC);
-				
-			//get opcode struct
-				INSTRUCTION ins = lookup(cpuOPCode);
-				
-				printf("%sRead Opcode: %#X as Instruction %s.%s\n", ANSI_COLOR_BLUE,cpuOPCode, ins.name,  ANSI_COLOR_RESET);
+	void cpu_clock()
+	{
+	
+		printf("%sCPU Clock %d.%s\n", ANSI_COLOR_BLUE, cpuCycles, ANSI_COLOR_RESET);
+	
+		// Each instruction requires a variable number of clock cycles to execute.
+		// In my emulation, I only care about the final result and so I perform
+		// the entire computation in one hit. In hardware, each clock cycle would
+		// perform "microcode" style transformations of the CPUs state.
+		//
+		// To remain compliant with connected devices, it's important that the
+		// emulation also takes "time" in order to execute instructions, so I
+		// implement that delay by simply counting down the cycles required by
+		// the instruction. When it reaches 0, the instruction is complete, and
+		// the next one is ready to be executed.
+			if (cpuCycles == 0)
+			{
 			
-			// Always set the unused status flag bit to 1
-				cpu_set_flag(U, true);
+				//wait for enter input
+					getchar();
 			
-			// Increment program counter, we read the cpuOPCode byte
-				cpu.PC++;
-	
-			// Get Starting number of cycles
-				cpuCycles = ins.cycles;
-	
-			// Perform fetch of intermmediate data using the
-			// required addressing mode
-				uint8_t additional_cycle1 = (*ins.addrmode)();
-	
-			// Perform operation
-				uint8_t additional_cycle2 = (*ins.operate)();
-	
-			// The addressmode and cpuOPCode may have altered the number
-			// of cycles this instruction requires before its completed
-				cpuCycles += (additional_cycle1 & additional_cycle2);
-	
-			// Always set the unused status flag bit to 1
-				cpu_set_flag(U, true);
-	
-			//#ifdef LOGMODE
-					// This logger dumps every cycle the entire processor state for analysis.
-					// This can be used for debugging the emulation, but has little utility
-					// during emulation. Its also very slow, so only use if you have to.
-					//if (logfile == nullptr)	logfile = fopen("olc6502.txt", "wt");
-					//if (logfile != nullptr)
-					//{
-					//	fprintf(logfile, "%10d:%02d PC:%04X %s A:%02X X:%02X Y:%02X %s%s%s%s%s%s%s%s STKP:%02X\n",
-					//		clock_count, 0, log_pc, "XXX", a, x, y,
-					//		GetFlag(N) ? "N" : ".",	GetFlag(V) ? "V" : ".",	GetFlag(U) ? "U" : ".",
-					//		GetFlag(B) ? "B" : ".",	GetFlag(D) ? "D" : ".",	GetFlag(I) ? "I" : ".",
-					//		GetFlag(Z) ? "Z" : ".",	GetFlag(C) ? "C" : ".",	stkp);
-					//}
-			//#endif
-		}
-	
-	// Increment global clock count - This is actually unused unless logging is enabled
-	// but I've kept it in because its a handy watch variable for debugging
-		cpuClockCount++;
-
-	// Decrement the number of cycles remaining for this instruction
-		cpuCycles--;
+				// Read next instruction byte. This 8-bit value is used to index
+				// the translation table to get the relevant information about
+				// how to implement the instruction
+					cpuOPCode = cpu_read(cpu.PC);
+					
+				//get opcode struct
+					INSTRUCTION ins = lookup(cpuOPCode);
+					
+					printf("%sRead Opcode: %#X as Instruction %s.%s\n", ANSI_COLOR_YELLOW,cpuOPCode, ins.name,  ANSI_COLOR_RESET);
+				
+				// Always set the unused status flag bit to 1
+					cpu_set_flag(U, true);
+				
+				// Increment program counter, we read the cpuOPCode byte
+					cpu.PC++;
 		
-}
+				// Get Starting number of cycles
+					cpuCycles = ins.cycles;
+		
+				// Perform fetch of intermmediate data using the
+				// required addressing mode
+					uint8_t additional_cycle1 = (*ins.addrmode)();
+		
+				// Perform operation
+					uint8_t additional_cycle2 = (*ins.operate)();
+		
+				// The addressmode and cpuOPCode may have altered the number
+				// of cycles this instruction requires before its completed
+					cpuCycles += (additional_cycle1 & additional_cycle2);
+		
+				// Always set the unused status flag bit to 1
+					cpu_set_flag(U, true);
+		
+				//#ifdef LOGMODE
+						// This logger dumps every cycle the entire processor state for analysis.
+						// This can be used for debugging the emulation, but has little utility
+						// during emulation. Its also very slow, so only use if you have to.
+						//if (logfile == nullptr)	logfile = fopen("olc6502.txt", "wt");
+						//if (logfile != nullptr)
+						//{
+						//	fprintf(logfile, "%10d:%02d PC:%04X %s A:%02X X:%02X Y:%02X %s%s%s%s%s%s%s%s STKP:%02X\n",
+						//		clock_count, 0, log_pc, "XXX", a, x, y,
+						//		GetFlag(N) ? "N" : ".",	GetFlag(V) ? "V" : ".",	GetFlag(U) ? "U" : ".",
+						//		GetFlag(B) ? "B" : ".",	GetFlag(D) ? "D" : ".",	GetFlag(I) ? "I" : ".",
+						//		GetFlag(Z) ? "Z" : ".",	GetFlag(C) ? "C" : ".",	stkp);
+						//}
+				//#endif
+			}
+		
+		// Increment global clock count - This is actually unused unless logging is enabled
+		// but I've kept it in because its a handy watch variable for debugging
+			cpuClockCount++;
+	
+		// Decrement the number of cycles remaining for this instruction
+			cpuCycles--;
+			
+	}
 
 ///////////////////////////////////////////////////////////////////////////////
 // ADDRESSING MODES
@@ -345,21 +385,21 @@ void cpu_clock()
 // There is no additional data required for this instruction. The instruction
 // does something very simple like like sets a cpu.status bit. However, we will
 // target the accumulator, for instructions like PHA
-uint8_t cpu_IMP()
-{
-	cpuFetched = cpu.A;
-	return 0;
-}
+	uint8_t cpu_IMP()
+	{
+		cpuFetched = cpu.A;
+		return 0;
+	}
 
 
 // Address Mode: Immediate
 // The instruction expects the next byte to be used as a value, so we'll prep
 // the read address to point to the next byte
-uint8_t cpu_IMM()
-{
-	cpuAddrAbs = cpu.PC++;
-	return 0;
-}
+	uint8_t cpu_IMM()
+	{
+		cpuAddrAbs = cpu.PC++;
+		return 0;
+	}
 
 
 
@@ -367,13 +407,13 @@ uint8_t cpu_IMM()
 // To save program bytes, zero page addressing allows you to absolutely address
 // a location in first 0xFF bytes of address range. Clearly this only requires
 // one byte instead of the usual two.
-uint8_t cpu_ZP0()
-{
-	cpuAddrAbs = cpu_read(cpu.PC);
-	cpu.PC++;
-	cpuAddrAbs &= 0x00FF;
-	return 0;
-}
+	uint8_t cpu_ZP0()
+	{
+		cpuAddrAbs = cpu_read(cpu.PC);
+		cpu.PC++;
+		cpuAddrAbs &= 0x00FF;
+		return 0;
+	}
 
 
 
@@ -1420,9 +1460,9 @@ uint8_t cpu_XXX()
 ///////////////////////////////////////////////////////////////////////////////
 // HELPER FUNCTIONS
 
-bool cpu_complete()
+bool cpu_running()
 {
-	return cpuCycles == 0;
+	return cpuCycles >= 0;
 }
 
 int main()
@@ -1434,9 +1474,9 @@ int main()
 	
 	cpu_reset();
 	
-	do{
+	while(cpu_running()){
 		cpu_clock();
-	} while(cpuCycles >= 0);
+	}
 	
 	return 0;
 	
