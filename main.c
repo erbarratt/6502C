@@ -18,7 +18,7 @@ CPU cpu;
 // A convenience variable used everywhere
 	uint16_t cpuTemp  = 0x0000;
 	
-// All used memory addresses end up in here
+// All used memory addresses end up in here, note not every cpu.PC++ writes to this var
 	uint16_t cpuAddrAbs     = 0x0000;
 
 // Represents absolute address following a branch
@@ -56,23 +56,48 @@ CPU cpu;
 * The table is one big initialiser list of initialiser lists...
 */
 	INSTRUCTION lookupM[256] = {
-		{"BRK", "Break Interrupt, Implied", &cpu_BRK, &cpu_IMM, 7 },	                {"ORA", "Or with A, X-indexed, Indirect", &cpu_ORA, &cpu_IZX, 6 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 3 },	                {"ORA", "OR with A, Zero Paged", &cpu_ORA, &cpu_ZP0, 3 },	                {"ASL", "", &cpu_ASL, &cpu_ZP0, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"PHP", "", &cpu_PHP, &cpu_IMP, 3 },	{"ORA", "", &cpu_ORA, &cpu_IMM, 2 },	{"ASL", "", &cpu_ASL, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	{"ORA", "", &cpu_ORA, &cpu_ABS, 4 },	{"ASL", "", &cpu_ASL, &cpu_ABS, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
-		{"BPL", "Branch on Plus, Relative", &cpu_BPL, &cpu_REL, 2 },	                {"ORA", "Or with A, Y-indexed, Indirect", &cpu_ORA, &cpu_IZY, 5 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"ORA", "OR with A, Zero Paged, X-indexed", &cpu_ORA, &cpu_ZPX, 4 },	        {"ASL", "", &cpu_ASL, &cpu_ZPX, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"CLC", "Clear Carry, Implied", &cpu_CLC, &cpu_IMP, 2 },	{"ORA", "", &cpu_ORA, &cpu_ABY, 4 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	{"ORA", "", &cpu_ORA, &cpu_ABX, 4 },	{"ASL", "", &cpu_ASL, &cpu_ABX, 7 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
-		{"JSR", "Jump Subroutine, Absolute", &cpu_JSR, &cpu_ABS, 6 },	            {"AND", "AND, X-indexed, Indirect", &cpu_AND, &cpu_IZX, 6 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"BIT", "Bit Test, Zero Paged", &cpu_BIT, &cpu_ZP0, 3 },	            {"AND", "AND, Zero Paged", &cpu_AND, &cpu_ZP0, 3 },	                        {"ROL", "", &cpu_ROL, &cpu_ZP0, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"PLP", "", &cpu_PLP, &cpu_IMP, 4 },	{"AND", "", &cpu_AND, &cpu_IMM, 2 },	{"ROL", "", &cpu_ROL, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"BIT", "", &cpu_BIT, &cpu_ABS, 4 },	{"AND", "", &cpu_AND, &cpu_ABS, 4 },	{"ROL", "", &cpu_ROL, &cpu_ABS, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
-		{"BMI", "Branch on Minus, Relative", &cpu_BMI, &cpu_REL, 2 },	            {"AND", "AND, Y-indexed, Indirect", &cpu_AND, &cpu_IZY, 5 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"AND", "AND, Zero Paged, X-indexed", &cpu_AND, &cpu_ZPX, 4 },	            {"ROL", "", &cpu_ROL, &cpu_ZPX, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"SEC", "", &cpu_SEC, &cpu_IMP, 2 },	{"AND", "", &cpu_AND, &cpu_ABY, 4 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	{"AND", "", &cpu_AND, &cpu_ABX, 4 },	{"ROL", "", &cpu_ROL, &cpu_ABX, 7 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
-		{"RTI", "Return from Interrupt, Implied", &cpu_RTI, &cpu_IMP, 6 },	        {"EOR", "Exclusive OR, X-indexed, Indirect", &cpu_EOR, &cpu_IZX, 6 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 3 },	                {"EOR", "Exclusivve OR, Zero Paged", &cpu_EOR, &cpu_ZP0, 3 },	            {"LSR", "", &cpu_LSR, &cpu_ZP0, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"PHA", "", &cpu_PHA, &cpu_IMP, 3 },	{"EOR", "", &cpu_EOR, &cpu_IMM, 2 },	{"LSR", "", &cpu_LSR, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"JMP", "", &cpu_JMP, &cpu_ABS, 3 },	{"EOR", "", &cpu_EOR, &cpu_ABS, 4 },	{"LSR", "", &cpu_LSR, &cpu_ABS, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
-		{"BVC", "Branch on Overflow Clear, Relative", &cpu_BVC, &cpu_REL, 2 },	    {"EOR", "Exclusive OR, y-indexed, Indirect", &cpu_EOR, &cpu_IZY, 5 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"EOR", "Exclusivve OR, Zero Paged, X-indexed", &cpu_EOR, &cpu_ZPX, 4 },	    {"LSR", "", &cpu_LSR, &cpu_ZPX, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"CLI", "", &cpu_CLI, &cpu_IMP, 2 },	{"EOR", "", &cpu_EOR, &cpu_ABY, 4 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	{"EOR", "", &cpu_EOR, &cpu_ABX, 4 },	{"LSR", "", &cpu_LSR, &cpu_ABX, 7 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
-		{"RTS", "Return from subroutine, Implied", &cpu_RTS, &cpu_IMP, 6 },	        {"ADC", "Add with Carry, X-indexed, Indirect", &cpu_ADC, &cpu_IZX, 6 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 3 },	                {"ADC", "Add with Carry, Zero Paged", &cpu_ADC, &cpu_ZP0, 3 },	            {"ROR", "", &cpu_ROR, &cpu_ZP0, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"PLA", "", &cpu_PLA, &cpu_IMP, 4 },	{"ADC", "Add with Carry, Immediate", &cpu_ADC, &cpu_IMM, 2 },	{"ROR", "", &cpu_ROR, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"JMP", "", &cpu_JMP, &cpu_IND, 5 },	{"ADC", "Add with Carry, Absolute", &cpu_ADC, &cpu_ABS, 4 },	{"ROR", "", &cpu_ROR, &cpu_ABS, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
-		{"BVS", "Branch on Overflow Set, Relative", &cpu_BVS, &cpu_REL, 2 },	        {"ADC", "Add with Carry, Y-indexed, Indirect", &cpu_ADC, &cpu_IZY, 5 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },    	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"ADC", "Add with Carry, Zero Paged, X-indexed", &cpu_ADC, &cpu_ZPX, 4 },	{"ROR", "", &cpu_ROR, &cpu_ZPX, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"SEI", "", &cpu_SEI, &cpu_IMP, 2 },	{"ADC", "Add with Carry, Absolute, Y-indexed", &cpu_ADC, &cpu_ABY, 4 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	{"ADC", "Add with Carry, Absolute, X-indexed", &cpu_ADC, &cpu_ABX, 4 },	{"ROR", "", &cpu_ROR, &cpu_ABX, 7 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
-		{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	                        {"STA", "Store A, X-indexed, Indirect", &cpu_STA, &cpu_IZX, 6 },	            {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"STY", "Store Y, Zero Paged", &cpu_STY, &cpu_ZP0, 3 },              {"STA", "Store A, Zero Paged", &cpu_STA, &cpu_ZP0, 3 },	                    {"STX", "Store X, Zero Page", &cpu_STX, &cpu_ZP0, 3 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 3 },	{"DEY", "Decrement Y, Implied", &cpu_DEY, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	{"TXA", "", &cpu_TXA, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"STY", "", &cpu_STY, &cpu_ABS, 4 },	{"STA", "", &cpu_STA, &cpu_ABS, 4 },	{"STX", "Store X, Absolute", &cpu_STX, &cpu_ABS, 4 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },
-		{"BCC", "Branch on Carry Clear, Relative", &cpu_BCC, &cpu_REL, 2 },	        {"STA", "Store A, Y-indexed, Indirect", &cpu_STA, &cpu_IZY, 6 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"STY", "Store Y, Zero Page, X-indexed", &cpu_STY, &cpu_ZPX, 4 },	{"STA", "Store A, Zero Paged, X-indexed", &cpu_STA, &cpu_ZPX, 4 },	        {"STX", "Store X, Zero Page, Y-indexed", &cpu_STX, &cpu_ZPY, 4 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },	{"TYA", "", &cpu_TYA, &cpu_IMP, 2 },	{"STA", "", &cpu_STA, &cpu_ABY, 5 },	{"TXS", "", &cpu_TXS, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 5 },	{"STA", "", &cpu_STA, &cpu_ABX, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },
-		{"LDY", "Load Y, Immediate", &cpu_LDY, &cpu_IMM, 2 },	                    {"LDA", "Load A, X-indexed, Indirect", &cpu_LDA, &cpu_IZX, 6 },	            {"LDX", "Load X, Immediate", &cpu_LDX, &cpu_IMM, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"LDY", "Load Y, Zero Paged", &cpu_LDY, &cpu_ZP0, 3 },	            {"LDA", "Load A Register", &cpu_LDA, &cpu_ZP0, 3 },	                        {"LDX", "", &cpu_LDX, &cpu_ZP0, 3 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 3 },	{"TAY", "", &cpu_TAY, &cpu_IMP, 2 },	{"LDA",  "Load A Register", &cpu_LDA, &cpu_IMM, 2 },	{"TAX", "", &cpu_TAX, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"LDY", "Load Y, Absolute", &cpu_LDY, &cpu_ABS, 4 },	{"LDA",  "Load A Register", &cpu_LDA, &cpu_ABS, 4 },	{"LDX", "", &cpu_LDX, &cpu_ABS, 4 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },
-		{"BCS", "Branch on Carry Set, Relative", &cpu_BCS, &cpu_REL, 2 },	        {"LDA", "Load A, Y-indexed, Indirect", &cpu_LDA, &cpu_IZY, 5 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"LDY", "Load Y, Zero Paged, X-indexed", &cpu_LDY, &cpu_ZPX, 4 },	{"LDA", "Load A Register", &cpu_LDA, &cpu_ZPX, 4 },	                        {"LDX", "", &cpu_LDX, &cpu_ZPY, 4 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },	{"CLV", "", &cpu_CLV, &cpu_IMP, 2 },	{"LDA",  "Load A Register", &cpu_LDA, &cpu_ABY, 4 },	{"TSX", "", &cpu_TSX, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },	{"LDY", "Load Y, Absolute, X-indexed", &cpu_LDY, &cpu_ABX, 4 },	{"LDA",  "Load A Register", &cpu_LDA, &cpu_ABX, 4 },	{"LDX", "", &cpu_LDX, &cpu_ABY, 4 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },
-		{"CPY", "Compare with Y, Immediate", &cpu_CPY, &cpu_IMM, 2 },	            {"CMP", "Compare with A, X-indexed, Indirect", &cpu_CMP, &cpu_IZX, 6 },	    {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"CPY", "Compare with Y, Zero Paged", &cpu_CPY, &cpu_ZP0, 3 },	    {"CMP", "Compare with A, Zero Paged", &cpu_CMP, &cpu_ZP0, 3 },	            {"DEC", "", &cpu_DEC, &cpu_ZP0, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"INY", "", &cpu_INY, &cpu_IMP, 2 },	{"CMP", "", &cpu_CMP, &cpu_IMM, 2 },	{"DEX", "", &cpu_DEX, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"CPY", "", &cpu_CPY, &cpu_ABS, 4 },	{"CMP", "", &cpu_CMP, &cpu_ABS, 4 },	{"DEC", "", &cpu_DEC, &cpu_ABS, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
-		{"BNE", "Branch on Not Equal, Relative", &cpu_BNE, &cpu_REL, 2 },	        {"CMP", "Compare with A, Y-indexed, Indirect", &cpu_CMP, &cpu_IZY, 5 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"CMP", "Compare with A", &cpu_CMP, &cpu_ZPX, 4 },	                        {"DEC", "", &cpu_DEC, &cpu_ZPX, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"CLD", "", &cpu_CLD, &cpu_IMP, 2 },	{"CMP", "", &cpu_CMP, &cpu_ABY, 4 },	{"NOP", "", &cpu_NOP, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	{"CMP", "", &cpu_CMP, &cpu_ABX, 4 },	{"DEC", "", &cpu_DEC, &cpu_ABX, 7 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
-		{"CPX", "Compare with X, Immediate", &cpu_CPX, &cpu_IMM, 2 },	            {"SBC", "Subtract with Carry, X-indexed, Indirect", &cpu_SBC, &cpu_IZX, 6 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"CPX", "Compare with X, Zero Paged", &cpu_CPX, &cpu_ZP0, 3 },	    {"SBC", "Subtract with Carry, Zero Paged", &cpu_SBC, &cpu_ZP0, 3 },	        {"INC", "", &cpu_INC, &cpu_ZP0, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"INX", "", &cpu_INX, &cpu_IMP, 2 },	{"SBC", "", &cpu_SBC, &cpu_IMM, 2 },	{"NOP", "", &cpu_NOP, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_SBC, &cpu_IMP, 2 },	{"CPX", "", &cpu_CPX, &cpu_ABS, 4 },	{"SBC", "", &cpu_SBC, &cpu_ABS, 4 },	{"INC", "", &cpu_INC, &cpu_ABS, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
-		{"BEQ", "Branch on Equal, Relative", &cpu_BEQ, &cpu_REL, 2 },            	{"SBC", "Subtract with Carry, Y-indexed, Indirect", &cpu_SBC, &cpu_IZY, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"SBC", "Subtract with Carry", &cpu_SBC, &cpu_ZPX, 4 },	                    {"INC", "", &cpu_INC, &cpu_ZPX, 6 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"SED", "", &cpu_SED, &cpu_IMP, 2 },	{"SBC", "", &cpu_SBC, &cpu_ABY, 4 },	{"NOP", "", &cpu_NOP, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	{"SBC", "", &cpu_SBC, &cpu_ABX, 4 },	{"INC", "", &cpu_INC, &cpu_ABX, 7 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 }
+		{"BRK", "Break Interrupt, Implied", &cpu_BRK, &cpu_IMM, 7 },	                {"ORA", "Or with A, X-indexed, Indirect", &cpu_ORA, &cpu_IZX, 6 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 3 },	                {"ORA", "OR with A, Zero Paged", &cpu_ORA, &cpu_ZP0, 3 },	                {"ASL", "Arithmetic Shift Left, Zero Paged", &cpu_ASL, &cpu_ZP0, 5 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	    {"PHP", "Push Status to Stack, Implied", &cpu_PHP, &cpu_IMP, 3 },	{"ORA", "OR with A, Immediate", &cpu_ORA, &cpu_IMM, 2 },	                        {"ASL", "Arithmetic shift Left, Implied", &cpu_ASL, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"ORA", "OR with A, Absolute", &cpu_ORA, &cpu_ABS, 4 },	                        {"ASL", "Arithmetic Shift Left, Absolute", &cpu_ASL, &cpu_ABS, 6 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
+		{"BPL", "Branch on Plus, Relative", &cpu_BPL, &cpu_REL, 2 },	                {"ORA", "Or with A, Y-indexed, Indirect", &cpu_ORA, &cpu_IZY, 5 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"ORA", "OR with A, Zero Paged, X-indexed", &cpu_ORA, &cpu_ZPX, 4 },	        {"ASL", "Arithmetic Shift Left, Zero Paged, X-indexed", &cpu_ASL, &cpu_ZPX, 6 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	    {"CLC", "Clear Carry, Implied", &cpu_CLC, &cpu_IMP, 2 },            	{"ORA", "OR with A, Absolute, Y-indexed", &cpu_ORA, &cpu_ABY, 4 },	            {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"ORA", "OR with A, Absolute, X-indexed", &cpu_ORA, &cpu_ABX, 4 },	            {"ASL", "Arithmetic Shift Left, Absolute, X-indexed", &cpu_ASL, &cpu_ABX, 7 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
+		{"JSR", "Jump Subroutine, Absolute", &cpu_JSR, &cpu_ABS, 6 },	            {"AND", "AND, X-indexed, Indirect", &cpu_AND, &cpu_IZX, 6 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"BIT", "Bit Test, Zero Paged", &cpu_BIT, &cpu_ZP0, 3 },	            {"AND", "AND, Zero Paged", &cpu_AND, &cpu_ZP0, 3 },	                        {"ROL", "Rotate Left, Zero Paged", &cpu_ROL, &cpu_ZP0, 5 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	    {"PLP", "Pull Status from Stack, Implied", &cpu_PLP, &cpu_IMP, 4 },	{"AND", "AND, Immediate", &cpu_AND, &cpu_IMM, 2 },	                            {"ROL", "Rotate Left, Implied", &cpu_ROL, &cpu_IMP, 2 },            	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"BIT", "Bit Test, Absolute", &cpu_BIT, &cpu_ABS, 4 },	        {"AND", "AND, Absolute", &cpu_AND, &cpu_ABS, 4 },	                            {"ROL", "Rotate Left, Absolute", &cpu_ROL, &cpu_ABS, 6 },	                    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
+		{"BMI", "Branch on Minus, Relative", &cpu_BMI, &cpu_REL, 2 },	            {"AND", "AND, Y-indexed, Indirect", &cpu_AND, &cpu_IZY, 5 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"AND", "AND, Zero Paged, X-indexed", &cpu_AND, &cpu_ZPX, 4 },	            {"ROL", "Rotate Left, Zero Paged, X-indexed", &cpu_ROL, &cpu_ZPX, 6 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	    {"SEC", "Set Carry, Implied", &cpu_SEC, &cpu_IMP, 2 },	            {"AND", "AND, Absolute, Y-indexed", &cpu_AND, &cpu_ABY, 4 },	                    {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"AND", "AND, Absolute, X-indexed", &cpu_AND, &cpu_ABX, 4 },	                    {"ROL", "Rotate Left, Absolute, X-indexed", &cpu_ROL, &cpu_ABX, 7 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
+		{"RTI", "Return from Interrupt, Implied", &cpu_RTI, &cpu_IMP, 6 },	        {"EOR", "Exclusive OR, X-indexed, Indirect", &cpu_EOR, &cpu_IZX, 6 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 3 },	                {"EOR", "Exclusivve OR, Zero Paged", &cpu_EOR, &cpu_ZP0, 3 },	            {"LSR", "Logical Shift Right, Zero Paged", &cpu_LSR, &cpu_ZP0, 5 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	    {"PHA", "Push A to Stack, Implied", &cpu_PHA, &cpu_IMP, 3 },	        {"EOR", "Exclusive OR, Immediate", &cpu_EOR, &cpu_IMM, 2 },	                    {"LSR", "Logical shift Right, Implied", &cpu_LSR, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"JMP", "Jump, Absolute", &cpu_JMP, &cpu_ABS, 3 },	            {"EOR", "Exclusive OR, Absolute", &cpu_EOR, &cpu_ABS, 4 },	                    {"LSR", "Logical Shift Right, Absolute", &cpu_LSR, &cpu_ABS, 6 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
+		{"BVC", "Branch on Overflow Clear, Relative", &cpu_BVC, &cpu_REL, 2 },	    {"EOR", "Exclusive OR, y-indexed, Indirect", &cpu_EOR, &cpu_IZY, 5 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"EOR", "Exclusivve OR, Zero Paged, X-indexed", &cpu_EOR, &cpu_ZPX, 4 },	    {"LSR", "Logical Shift Right, Zero Paged, X-indexed", &cpu_LSR, &cpu_ZPX, 6 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	    {"CLI", "Clear Interrupt Disable, Implied", &cpu_CLI, &cpu_IMP, 2 },	{"EOR", "Exclusive OR, Absolute, Y-indexed", &cpu_EOR, &cpu_ABY, 4 },	        {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"EOR", "Exclusive OR, Absolute, X-indexed", &cpu_EOR, &cpu_ABX, 4 },	        {"LSR", "Logical Shift Right, Absolute, X-indexed", &cpu_LSR, &cpu_ABX, 7 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
+		{"RTS", "Return from subroutine, Implied", &cpu_RTS, &cpu_IMP, 6 },	        {"ADC", "Add with Carry, X-indexed, Indirect", &cpu_ADC, &cpu_IZX, 6 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 3 },	                {"ADC", "Add with Carry, Zero Paged", &cpu_ADC, &cpu_ZP0, 3 },	            {"ROR", "Rotate Right, Zero Paged", &cpu_ROR, &cpu_ZP0, 5 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	    {"PLA", "Pull A from Stack, Implied", &cpu_PLA, &cpu_IMP, 4 },	    {"ADC", "Add with Carry, Immediate", &cpu_ADC, &cpu_IMM, 2 },	                {"ROR", "Rotate Right, Implied", &cpu_ROR, &cpu_IMP, 2 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"JMP", "Jump, Indirect", &cpu_JMP, &cpu_IND, 5 },	            {"ADC", "Add with Carry, Absolute", &cpu_ADC, &cpu_ABS, 4 },	                    {"ROR", "Rotate Right, Absolute", &cpu_ROR, &cpu_ABS, 6 },	                    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
+		{"BVS", "Branch on Overflow Set, Relative", &cpu_BVS, &cpu_REL, 2 },	        {"ADC", "Add with Carry, Y-indexed, Indirect", &cpu_ADC, &cpu_IZY, 5 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },    	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"ADC", "Add with Carry, Zero Paged, X-indexed", &cpu_ADC, &cpu_ZPX, 4 },	{"ROR", "Rotate Right, Zero Paged, X-indexed", &cpu_ROR, &cpu_ZPX, 6 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	    {"SEI", "Set Interrupt Disable, Implied", &cpu_SEI, &cpu_IMP, 2 },	{"ADC", "Add with Carry, Absolute, Y-indexed", &cpu_ADC, &cpu_ABY, 4 },	        {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"ADC", "Add with Carry, Absolute, X-indexed", &cpu_ADC, &cpu_ABX, 4 },	        {"ROR", "Rotate Right, Absolute, X-indexed", &cpu_ROR, &cpu_ABX, 7 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
+		{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	                        {"STA", "Store A, X-indexed, Indirect", &cpu_STA, &cpu_IZX, 6 },	            {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"STY", "Store Y, Zero Paged", &cpu_STY, &cpu_ZP0, 3 },              {"STA", "Store A, Zero Paged", &cpu_STA, &cpu_ZP0, 3 },	                    {"STX", "Store X, Zero Page", &cpu_STX, &cpu_ZP0, 3 },	                            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 3 },	    {"DEY", "Decrement Y, Implied", &cpu_DEY, &cpu_IMP, 2 },	            {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	                            {"TXA", "Transfer X to A, Implied", &cpu_TXA, &cpu_IMP, 2 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"STY", "Store Y, Absolute", &cpu_STY, &cpu_ABS, 4 },	        {"STA", "Store A, Absolute", &cpu_STA, &cpu_ABS, 4 },	                        {"STX", "Store X, Absolute", &cpu_STX, &cpu_ABS, 4 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },
+		{"BCC", "Branch on Carry Clear, Relative", &cpu_BCC, &cpu_REL, 2 },	        {"STA", "Store A, Y-indexed, Indirect", &cpu_STA, &cpu_IZY, 6 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"STY", "Store Y, Zero Page, X-indexed", &cpu_STY, &cpu_ZPX, 4 },	{"STA", "Store A, Zero Paged, X-indexed", &cpu_STA, &cpu_ZPX, 4 },	        {"STX", "Store X, Zero Page, Y-indexed", &cpu_STX, &cpu_ZPY, 4 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },	    {"TYA", "Transfer Y to A, Implied", &cpu_TYA, &cpu_IMP, 2 },	        {"STA", "Store A, Absolute, Y-indexed", &cpu_STA, &cpu_ABY, 5 },	                {"TXS", "Transfer X to SP, Implied", &cpu_TXS, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 5 },	            {"STA", "Store A, Absolute, X-indexed", &cpu_STA, &cpu_ABX, 5 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	                            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },
+		{"LDY", "Load Y, Immediate", &cpu_LDY, &cpu_IMM, 2 },	                    {"LDA", "Load A, X-indexed, Indirect", &cpu_LDA, &cpu_IZX, 6 },	            {"LDX", "Load X, Immediate", &cpu_LDX, &cpu_IMM, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	{"LDY", "Load Y, Zero Paged", &cpu_LDY, &cpu_ZP0, 3 },	            {"LDA", "Load A Register", &cpu_LDA, &cpu_ZP0, 3 },	                        {"LDX", "Load X, Zero Paged", &cpu_LDX, &cpu_ZP0, 3 },	                            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 3 },	    {"TAY", "Transfer A to Y, Implied", &cpu_TAY, &cpu_IMP, 2 },	        {"LDA",  "Load A Register, Immediate", &cpu_LDA, &cpu_IMM, 2 },	                {"TAX", "Transfer A to X, Implied", &cpu_TAX, &cpu_IMP, 2 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"LDY", "Load Y, Absolute", &cpu_LDY, &cpu_ABS, 4 },	            {"LDA",  "Load A Register", &cpu_LDA, &cpu_ABS, 4 },	                            {"LDX", "Load X, Absolute", &cpu_LDX, &cpu_ABS, 4 },	                            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },
+		{"BCS", "Branch on Carry Set, Relative", &cpu_BCS, &cpu_REL, 2 },	        {"LDA", "Load A, Y-indexed, Indirect", &cpu_LDA, &cpu_IZY, 5 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	{"LDY", "Load Y, Zero Paged, X-indexed", &cpu_LDY, &cpu_ZPX, 4 },	{"LDA", "Load A Register", &cpu_LDA, &cpu_ZPX, 4 },	                        {"LDX", "Load X, Zero Paged, Y-indexed", &cpu_LDX, &cpu_ZPY, 4 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },	    {"CLV", "Clear Overflow, Implied", &cpu_CLV, &cpu_IMP, 2 },	        {"LDA",  "Load A Register, Absolute, Y-indexed", &cpu_LDA, &cpu_ABY, 4 },	    {"TSX", "Tranfer SP to X, Implied", &cpu_TSX, &cpu_IMP, 2 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },	{"LDY", "Load Y, Absolute, X-indexed", &cpu_LDY, &cpu_ABX, 4 },	{"LDA",  "Load A Register", &cpu_LDA, &cpu_ABX, 4 },	                            {"LDX", "Load X, Absolute, Y-indexed", &cpu_LDX, &cpu_ABY, 4 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 4 },
+		{"CPY", "Compare with Y, Immediate", &cpu_CPY, &cpu_IMM, 2 },	            {"CMP", "Compare with A, X-indexed, Indirect", &cpu_CMP, &cpu_IZX, 6 },	    {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"CPY", "Compare with Y, Zero Paged", &cpu_CPY, &cpu_ZP0, 3 },	    {"CMP", "Compare with A, Zero Paged", &cpu_CMP, &cpu_ZP0, 3 },	            {"DEC", "Decrement, Zero Paged", &cpu_DEC, &cpu_ZP0, 5 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	    {"INY", "Increment Y, Implied", &cpu_INY, &cpu_IMP, 2 },	            {"CMP", "Compare with A, Immediate", &cpu_CMP, &cpu_IMM, 2 },	                {"DEX", "Decrement X, Implied", &cpu_DEX, &cpu_IMP, 2 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"CPY", "Compare with Y, Absolute", &cpu_CPY, &cpu_ABS, 4 },	    {"CMP", "Compare with A, Absolute", &cpu_CMP, &cpu_ABS, 4 },	                    {"DEC", "Decrement, Absolute", &cpu_DEC, &cpu_ABS, 6 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
+		{"BNE", "Branch on Not Equal, Relative", &cpu_BNE, &cpu_REL, 2 },	        {"CMP", "Compare with A, Y-indexed, Indirect", &cpu_CMP, &cpu_IZY, 5 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"CMP", "Compare with A", &cpu_CMP, &cpu_ZPX, 4 },	                        {"DEC", "Decrement, Zero Paged, X-indexed", &cpu_DEC, &cpu_ZPX, 6 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	    {"CLD", "Clear Decimal, Implied", &cpu_CLD, &cpu_IMP, 2 },	        {"CMP", "Comparew with A, Absolute, Y-indexed", &cpu_CMP, &cpu_ABY, 4 },	        {"NOP", "No Operation, Implied", &cpu_NOP, &cpu_IMP, 2 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"CMP", "Compare with A, Absolute, X-indexed", &cpu_CMP, &cpu_ABX, 4 },	        {"DEC", "Decrement, Absolute, X-indexed", &cpu_DEC, &cpu_ABX, 7 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
+		{"CPX", "Compare with X, Immediate", &cpu_CPX, &cpu_IMM, 2 },	            {"SBC", "Subtract with Carry, X-indexed, Indirect", &cpu_SBC, &cpu_IZX, 6 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"CPX", "Compare with X, Zero Paged", &cpu_CPX, &cpu_ZP0, 3 },	    {"SBC", "Subtract with Carry, Zero Paged", &cpu_SBC, &cpu_ZP0, 3 },	        {"INC", "Increment, Zero Paged", &cpu_INC, &cpu_ZP0, 5 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	    {"INX", "Increment X, Implied", &cpu_INX, &cpu_IMP, 2 },	            {"SBC", "Subtract with Carry, Immediate", &cpu_SBC, &cpu_IMM, 2 },	            {"NOP", "No Operation, Implied", &cpu_NOP, &cpu_IMP, 2 },	        {"???", "Illegal, Implied", &cpu_SBC, &cpu_IMP, 2 },	{"CPX", "Compare with X, Absolute", &cpu_CPX, &cpu_ABS, 4 },     {"SBC", "Subtract with Carry, Absolute", &cpu_SBC, &cpu_ABS, 4 },	            {"INC", "Increment, Absolute", &cpu_INC, &cpu_ABS, 6 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
+		{"BEQ", "Branch on Equal, Relative", &cpu_BEQ, &cpu_REL, 2 },            	{"SBC", "Subtract with Carry, Y-indexed, Indirect", &cpu_SBC, &cpu_IZY, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"SBC", "Subtract with Carry", &cpu_SBC, &cpu_ZPX, 4 },	                    {"INC", "Increment, Zero Paged, X-indexed", &cpu_INC, &cpu_ZPX, 6 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	    {"SED", "Set Decimal, Implied", &cpu_SED, &cpu_IMP, 2 },	            {"SBC", "Subtract with Carry, Absolute, Y-indexed", &cpu_SBC, &cpu_ABY, 4 },	    {"NOP", "No Operation, Implied", &cpu_NOP, &cpu_IMP, 2 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"SBC", "Subtract with Carry, Absolute, X-indexed", &cpu_SBC, &cpu_ABX, 4 },	    {"INC", "Increment, Absolute, X-indexed", &cpu_INC, &cpu_ABX, 7 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 }
 	};
+	
+	/**
+	* Write formatted hash string to console
+	* @return void
+	*/
+		void getHashString(void *hex, size_t size){
+			
+			if(size == 2){
+			
+				uint8_t num = *(uint8_t*) hex;
+				char hash[5];
+				sprintf(hash,"%02X", num);
+				printf("%s", hash);
+			
+			} else {
+			
+				uint16_t num = *(uint16_t*) hex;
+				char hash[] = "0000";
+				sprintf(hash,"%04X", num);
+				hash[size] = '\0';
+				printf("%s", hash);
+			
+			}
+		
+		}
 
 ///////////////////////////////////////////////////////////////////////////////
 // RAM FUNCTIONS
@@ -94,11 +119,16 @@ CPU cpu;
 		
 		}
 		
+	/**
+	* Load hash string into memory and set reset vector to start of program
+	* @return void
+	*/
 		void ram_load_program(){
 		
 			printf("%sRam program mounted.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
 		
 			// Load Program (assembled at https://www.masswerk.at/6502/assembler.html)
+			// calculate 3 X 10
 			/*
 				*=$8000
 				LDX #10
@@ -123,8 +153,6 @@ CPU cpu;
 			uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0xEA,0xEA,0xEA };
 			
 			uint16_t nOffset = 0x8000;
-			
-			
 			int i = 0;
 			while (i < 28)
 			{
@@ -133,30 +161,48 @@ CPU cpu;
 				i++;
 			}
 	
-			// Set Reset Vector
-			bus.ram.data[0xFFFC] = 0x00;
-			bus.ram.data[0xFFFD] = 0x80;
-
+			// Set Reset Vector to start of program
+				bus.ram.data[0xFFFC] = 0x00;
+				bus.ram.data[0xFFFD] = 0x80;
 		
 		}
 		
+	/**
+	* Draw the contents of memory in a matrix of set height and width
+	* @return void
+	*/
 		void ram_draw(uint16_t nAddr, int nRows, int nColumns)
 		{
 			
+			printf("%sMemLoc\t", ANSI_COLOR_CYAN);
+			for (int col = 0; col < nColumns; col++)
+			{
+				printf("  %01X",  col);
+			}
+			printf("%s\n",  ANSI_COLOR_RESET);
+			
 			for (int row = 0; row < nRows; row++)
 			{
-				printf("%s%#04X:\t", ANSI_COLOR_MAGENTA, nAddr);
+			
+				printf("%s0x", ANSI_COLOR_MAGENTA);
+				getHashString(&nAddr, 3);
+				printf("x\t%s", ANSI_COLOR_RESET);
+				
 				for (int col = 0; col < nColumns; col++)
 				{
 					if(bus.ram.data[nAddr] == 0){
 						printf(" 00");
 					} else {
-						printf(" %X",  bus.ram.data[nAddr]);
+						printf(" %02X",  bus.ram.data[nAddr]);
 					}
 					nAddr += 1;
 				}
-				printf("%s\n", ANSI_COLOR_RESET);
+				
+				printf("\n");
+				
 			}
+			
+			printf("%s", ANSI_COLOR_RESET);
 			
 		}
 
@@ -200,34 +246,38 @@ CPU cpu;
 ///////////////////////////////////////////////////////////////////////////////
 // CPU FUNCTIONS
 
-	void cpu_draw()
-	{
-		printf("STATUS:");
-		printf(" %sN%s", (cpu.status & N ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
-		printf(" %sV%s", (cpu.status & V ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
-		printf(" %s-%s", (cpu.status & U ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
-		printf(" %sB%s", (cpu.status & B ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
-		printf(" %sD%s", (cpu.status & D ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
-		printf(" %sI%s", (cpu.status & I ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
-		printf(" %sZ%s", (cpu.status & Z ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
-		printf(" %sC%s", (cpu.status & C ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
-		printf(" %sC%s", (cpu.status & C ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
-		printf(
-			"\n%sPC: %#X %sSP: %#X %sA: %#X [%d] %sX: %#X [%d] %sY: %#X [%d] ",
-			ANSI_COLOR_GREEN,
-			cpu.PC,
-			ANSI_COLOR_MAGENTA,
-			cpu.SP,
-			ANSI_COLOR_CYAN,
-			cpu.A,
-			cpu.A,
-			ANSI_COLOR_YELLOW,
-			cpu.X,
-			cpu.X,
-			ANSI_COLOR_BLUE,
-			cpu.Y,
-			cpu.Y);
-	}
+	/**
+	* Draw current CPU data status
+	* @return void
+	*/
+		void cpu_draw()
+		{
+			printf("STATUS:");
+			printf(" %sN%s", (cpu.status & N ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
+			printf(" %sV%s", (cpu.status & V ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
+			printf(" %s-%s", (cpu.status & U ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
+			printf(" %sB%s", (cpu.status & B ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
+			printf(" %sD%s", (cpu.status & D ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
+			printf(" %sI%s", (cpu.status & I ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
+			printf(" %sZ%s", (cpu.status & Z ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
+			printf(" %sC%s", (cpu.status & C ? ANSI_COLOR_GREEN : ANSI_COLOR_RED), ANSI_COLOR_RESET);
+			printf(
+				"\n%sPC: %#X %sSP: %#X %sA: %#X [%d] %sX: %#X [%d] %sY: %#X [%d] %s",
+				ANSI_COLOR_GREEN,
+				cpu.PC,
+				ANSI_COLOR_MAGENTA,
+				cpu.SP,
+				ANSI_COLOR_CYAN,
+				cpu.A,
+				cpu.A,
+				ANSI_COLOR_YELLOW,
+				cpu.X,
+				cpu.X,
+				ANSI_COLOR_BLUE,
+				cpu.Y,
+				cpu.Y,
+				ANSI_COLOR_RESET);
+		}
 
 	/**
 	* This function sources the data used by the instruction into
@@ -245,11 +295,29 @@ CPU cpu;
 	* @return uint8_t
 	 */
 		uint8_t cpu_fetch(){
-			INSTRUCTION lookupHere = lookup(cpuOPCode);
-			if (lookupHere.addrmode != &cpu_IMP){
+			if (lookupM[cpuOPCode].addrmode != &cpu_IMP){
 				cpuFetched = cpu_read(cpuAddrAbs);
 			}
 			return cpuFetched;
+		}
+		
+		char flagStr(FLAGS6502 f){
+			if(f == C)
+				return 'C';
+			else if (f == Z)
+				return 'Z';
+			else if (f == I)
+				return 'I';
+			else if (f == D)
+				return 'D';
+			else if (f == B)
+				return 'B';
+			else if (f == U)
+				return 'U';
+			else if (f == V)
+				return 'V';
+			else if (f == N)
+				return 'N';
 		}
 	
 	/**
@@ -258,6 +326,7 @@ CPU cpu;
 	 */
 		uint8_t cpu_get_flag(FLAGS6502 f)
 		{
+			printf("%s<:: Flag %c got%s\n",ANSI_COLOR_BLUE, flagStr(f), ANSI_COLOR_RESET);
 			return ((cpu.status & f) > 0) ? 1 : 0;
 		}
 	
@@ -268,6 +337,15 @@ CPU cpu;
 		void cpu_set_flag(FLAGS6502 f, bool v)
 		{
 		
+			char flag = flagStr(f);
+			char onOff = (v) ? '1' : '0';
+			
+			if(v){
+				printf("%s::> Flag %c set to %c%s\n",ANSI_COLOR_GREEN, flag, onOff, ANSI_COLOR_RESET);
+			} else {
+				printf("%s::> Flag %c set to %c%s\n",ANSI_COLOR_RED, flag, onOff, ANSI_COLOR_RESET);
+			}
+		
 			if (v){
 				cpu.status |= f;
 			} else {
@@ -275,27 +353,101 @@ CPU cpu;
 			}
 		
 		}
+		
+	/**
+	* Set Accumulator
+	* @param uint8_t data
+	* @return void
+	*/
+		void cpu_set_a(uint8_t data){
+			printf("%s~~> A  set to\t0X", ANSI_COLOR_CYAN);
+			getHashString(&data, 2);
+			printf("\t[%d]%s\n", data, ANSI_COLOR_RESET);
+			cpu.A = data;
+		}
+	
+	/**
+	* Set X Register
+	* @param uint8_t data
+	* @return void
+	*/
+		void cpu_set_x(uint8_t data){
+			printf("%s~~> X  set to\t0X", ANSI_COLOR_YELLOW);
+			getHashString(&data, 2);
+			printf("\t[%d]%s\n", data, ANSI_COLOR_RESET);
+			cpu.X = data;
+		}
+	
+	/**
+	* Set Y Register
+	* @param uint8_t data
+	* @return void
+	*/
+		void cpu_set_y(uint8_t data){
+			printf("%s~~> X  set to\t0X", ANSI_COLOR_BLUE);
+			getHashString(&data, 2);
+			printf("\t[%d]%s\n", data, ANSI_COLOR_RESET);
+			cpu.Y = data;
+		}
+	
+	/**
+	* Set Program Counter
+	* @param uint16_t data
+	* @return void
+	*/
+		void cpu_set_pc(uint16_t data){
+			printf("%s==> PC set to\t0X", ANSI_COLOR_GREEN);
+			getHashString(&data, 4);
+			printf("\t[%d]%s\n", data, ANSI_COLOR_RESET);
+			cpu.PC = data;
+		}
+	
+	/**
+	* Set Stack Pointer
+	* @param uint8_t data
+	* @return void
+	*/
+		void cpu_set_sp(uint8_t data){
+			printf("%s++> SP set to\t0X", ANSI_COLOR_MAGENTA);
+			getHashString(&data, 2);
+			printf("\t[%d]%s\n", data, ANSI_COLOR_RESET);
+			cpu.SP = data;
+		}
 	
 	/**
 	* Read RAM through Cpu->Bus
+	* @param uint16_t addr
 	* @return uint8_t
 	*/
 		uint8_t cpu_read(uint16_t addr)
 		{
-			return bus_read(addr);
+			uint8_t data = bus_read(addr);
+			printf("<-- CPU Read 0X");
+			getHashString(&data, 2);
+			printf(" [%d] from memory: 0X", data);
+			getHashString(&addr, 4);
+			printf("\n");
+			return data;
 		}
 	
 	/**
 	* Write to RAM through Cpu->Bus
+	* @param uint16_t addr
+	* @param uint8_t data
 	* @return void
 	*/
 		void cpu_write(uint16_t addr, uint8_t data)
 		{
 			bus_write(addr, data);
+			printf("--> Wrote 0X");
+			getHashString(&data, 2);
+			printf(" [%d] into memory: 0X", data);
+			getHashString(&addr, 4);
+			printf("\n");
 		}
 		
 	/**
-	*
+	* Is the CPU executing
 	* @return bool
 	*/
 		bool cpu_running(){
@@ -309,21 +461,22 @@ CPU cpu;
 		void cpu_run_cycles()
 		{
 			
+			cpuClockCount += cpuCycles;
+			
 			if(cuCyclesInit){
-				printf("%sExecuted in %d Cycles ", ANSI_COLOR_MAGENTA, cpuCycles);
+				printf("%s### %d Total Cycles, Instruction Executed in %d Cycles ", ANSI_COLOR_MAGENTA,cpuClockCount, cpuCycles);
 				cuCyclesInit = false;
 			}
 			
 			while(cpuCycles > 0){
 				printf("%s%d ", ANSI_COLOR_BLUE, cpuCycles);
 				cpuCycles--;
-				cpuClockCount++;
 			}
 			
 			printf("\n%s", ANSI_COLOR_RESET);
 		
 		}
-	
+	 
 	/**
 	* Forces the 6502 into a known state. This is hard-wired inside the CPU. The
 	* registers are set to 0x00, the status register is cleared except for unused
@@ -336,7 +489,8 @@ CPU cpu;
 	*/
 		void cpu_reset(){
 		
-			printf("%sReset CPU PC to reset vector.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
+			printf("\n%s---------------------------------------------%s\n\n", ANSI_COLOR_CYAN, ANSI_COLOR_RESET);
+			printf("%s--- Reset CPU PC to reset vector.%s\n", ANSI_COLOR_YELLOW, ANSI_COLOR_RESET);
 		
 			// Get address to set program counter to
 				cpuAddrAbs = 0xFFFC;
@@ -345,14 +499,16 @@ CPU cpu;
 				uint16_t hi = cpu_read(cpuAddrAbs);
 		
 			// Set it
-				cpu.PC = (hi << 8) | lo;
+				cpu_set_pc((hi << 8) | lo);
 		
 			// Reset internal registers
-				cpu.A = 0;
-				cpu.X = 0;
-				cpu.Y = 0;
-				cpu.SP = 0xFD;
+				cpu_set_a(0);
+				cpu_set_x(0);
+				cpu_set_y(0);
+				cpu_set_sp(0xFD);
+				
 				cpu.status = 0x00 | U;
+				printf("%s--- Status Flag Cleared.%s\n", ANSI_COLOR_YELLOW, ANSI_COLOR_RESET);
 		
 			// Clear internal helper variables
 				cpuAddrRel = 0x0000;
@@ -404,7 +560,7 @@ CPU cpu;
 						cpuAddrAbs = 0xFFFE;
 						uint16_t lo = cpu_read(cpuAddrAbs + 0);
 						uint16_t hi = cpu_read(cpuAddrAbs + 1);
-						cpu.PC = (hi << 8) | lo;
+						cpu_set_pc((hi << 8) | lo);
 			
 					// IRQs take time
 						cpuCycles = 7;
@@ -433,7 +589,7 @@ CPU cpu;
 			cpuAddrAbs = 0xFFFA;
 			uint16_t lo = cpu_read(cpuAddrAbs + 0);
 			uint16_t hi = cpu_read(cpuAddrAbs + 1);
-			cpu.PC = (hi << 8) | lo;
+			cpu_set_pc((hi << 8) | lo);
 		
 			cpuCycles = 8;
 			cuCyclesInit = true;
@@ -445,6 +601,8 @@ CPU cpu;
 	*/
 		void cpu_execute()
 		{
+		
+			printf("%s---------------------------------------------%s\n\n", ANSI_COLOR_CYAN, ANSI_COLOR_RESET);
 		
 			// Each instruction requires a variable number of clock cycles to execute.
 			// In my emulation, I only care about the final result and so I perform
@@ -466,8 +624,7 @@ CPU cpu;
 						cpuOPCode = cpu_read(cpu.PC);
 						
 					//get opcode struct and display info about this operation
-						cpuIns = lookup(cpuOPCode);
-						printf("%sInstruction Opcode: %#X [%s] (%s) from memory: %#X / %d.%s\n", ANSI_COLOR_YELLOW,cpuOPCode, cpuIns.name, cpuIns.label, cpu.PC, cpu.PC,  ANSI_COLOR_RESET);
+						printf("%s--- Instruction Opcode: %#X [%s] (%s)%s\n", ANSI_COLOR_YELLOW,cpuOPCode, lookupM[cpuOPCode].name, lookupM[cpuOPCode].label,  ANSI_COLOR_RESET);
 						
 					// Increment program counter, we have now read the cpuOPCode byte
 						cpu.PC++;
@@ -475,18 +632,18 @@ CPU cpu;
 				//-------------------------------------------------------------------------------
 	
 			// Get Starting number of cycles from instruction struct
-				cpuCycles = cpuIns.cycles;
+				cpuCycles = lookupM[cpuOPCode].cycles;
 				cuCyclesInit = true;
 	
 			// Perform fetch of intermmediate data using the
 			// required addressing mode
-				uint8_t additional_cycle1 = (*cpuIns.addrmode)();
+				uint8_t additional_cycle1 = (*lookupM[cpuOPCode].addrmode)();
 	
 			//1+ cycles
 				//-------------------------------------------------------------------------------
 				
 					// Perform operation, calling the function defined in that element of the instruction struct array
-						uint8_t additional_cycle2 = (*cpuIns.operate)();
+						uint8_t additional_cycle2 = (*lookupM[cpuOPCode].operate)();
 						
 				//-------------------------------------------------------------------------------
 	
@@ -495,7 +652,7 @@ CPU cpu;
 				cpuCycles += (additional_cycle1 & additional_cycle2);
 	
 			// Always set the unused status flag bit to 1
-				cpu_set_flag(U, true);
+				//cpu_set_flag(U, true);
 				
 			//output cycles for this operation
 				cpu_run_cycles();
@@ -504,17 +661,6 @@ CPU cpu;
 				cpuExecuting = false;
 			}
 				
-		}
-	
-	/**
-	* Return INSTRUCTION struct from lookup struct array
-	* @return INSTRUCTION
-	*/
-		INSTRUCTION lookup(uint8_t opCode)
-		{
-		
-			return lookupM[opCode];
-		
 		}
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -615,10 +761,11 @@ CPU cpu;
 	
 	/**
 	* Address Mode: Absolute
-	* A full 16-bit address is loaded and used
+	* A full 16-bit address is loaded and used from two bytes
 	* @return uint8_t
 	*/
 		uint8_t cpu_ABS(){
+		
 			uint16_t lo = cpu_read(cpu.PC);
 			cpu.PC++;
 			uint16_t hi = cpu_read(cpu.PC);
@@ -846,7 +993,7 @@ CPU cpu;
 				cpu_set_flag(N, cpuTemp & 0x80);
 			
 			// Load the result into the accumulator (it's 8-bit dont forget!)
-				cpu.A = cpuTemp & 0x00FF;
+				cpu_set_a(cpuTemp & 0x00FF);
 			
 			// This instruction has the potential to require an additional clock cycle
 				return 1;
@@ -891,12 +1038,13 @@ CPU cpu;
 				uint16_t value = ((uint16_t)cpuFetched) ^ 0x00FF;
 			
 			// Notice this is exactly the same as addition from here!
+			//should we cpu_get_flag silent here??
 				cpuTemp = (uint16_t)cpu.A + value + (uint16_t)cpu_get_flag(C);
 				cpu_set_flag(C, cpuTemp & 0xFF00);
 				cpu_set_flag(Z, ((cpuTemp & 0x00FF) == 0));
 				cpu_set_flag(V, (cpuTemp ^ (uint16_t)cpu.A) & (cpuTemp ^ value) & 0x0080);
 				cpu_set_flag(N, cpuTemp & 0x0080);
-				cpu.A = cpuTemp & 0x00FF;
+				cpu_set_a(cpuTemp & 0x00FF);
 				return 1;
 				
 		}
@@ -921,7 +1069,7 @@ CPU cpu;
 		uint8_t cpu_AND(){
 		
 			cpu_fetch();
-			cpu.A = cpu.A & cpuFetched;
+			cpu_set_a(cpu.A & cpuFetched);
 			cpu_set_flag(Z, cpu.A == 0x00);
 			cpu_set_flag(N, cpu.A & 0x80);
 			return 1;
@@ -939,8 +1087,8 @@ CPU cpu;
 			cpu_set_flag(C, (cpuTemp & 0xFF00) > 0);
 			cpu_set_flag(Z, (cpuTemp & 0x00FF) == 0x00);
 			cpu_set_flag(N, cpuTemp & 0x80);
-			if (lookup(cpuOPCode).addrmode == &cpu_IMP)
-				cpu.A = cpuTemp & 0x00FF;
+			if (lookupM[cpuOPCode].addrmode == &cpu_IMP)
+				cpu_set_a(cpuTemp & 0x00FF);
 			else
 				cpu_write(cpuAddrAbs, cpuTemp & 0x00FF);
 			return 0;
@@ -960,7 +1108,7 @@ CPU cpu;
 				if((cpuAddrAbs & 0xFF00) != (cpu.PC & 0xFF00))
 					cpuCycles++;
 				
-				cpu.PC = cpuAddrAbs;
+				cpu_set_pc(cpuAddrAbs);
 			}
 			return 0;
 		}
@@ -979,7 +1127,7 @@ CPU cpu;
 				if ((cpuAddrAbs & 0xFF00) != (cpu.PC & 0xFF00))
 					cpuCycles++;
 		
-				cpu.PC = cpuAddrAbs;
+				cpu_set_pc(cpuAddrAbs);
 			}
 			return 0;
 		}
@@ -998,7 +1146,7 @@ CPU cpu;
 				if ((cpuAddrAbs & 0xFF00) != (cpu.PC & 0xFF00))
 					cpuCycles++;
 		
-				cpu.PC = cpuAddrAbs;
+				cpu_set_pc(cpuAddrAbs);
 			}
 			return 0;
 		}
@@ -1033,7 +1181,7 @@ CPU cpu;
 				if ((cpuAddrAbs & 0xFF00) != (cpu.PC & 0xFF00))
 					cpuCycles++;
 		
-				cpu.PC = cpuAddrAbs;
+				cpu_set_pc(cpuAddrAbs);
 			}
 			return 0;
 		}
@@ -1052,7 +1200,7 @@ CPU cpu;
 				if ((cpuAddrAbs & 0xFF00) != (cpu.PC & 0xFF00))
 					cpuCycles++;
 		
-				cpu.PC = cpuAddrAbs;
+				cpu_set_pc(cpuAddrAbs);
 			}
 			return 0;
 		}
@@ -1071,7 +1219,7 @@ CPU cpu;
 				if ((cpuAddrAbs & 0xFF00) != (cpu.PC & 0xFF00))
 					cpuCycles++;
 		
-				cpu.PC = cpuAddrAbs;
+				cpu_set_pc(cpuAddrAbs);
 			}
 			return 0;
 		}
@@ -1095,7 +1243,7 @@ CPU cpu;
 			cpu.SP--;
 			cpu_set_flag(B, 0);
 		
-			cpu.PC = cpu_read(0xFFFE) | (cpu_read(0xFFFF) << 8);
+			cpu_set_pc(cpu_read(0xFFFE) | (cpu_read(0xFFFF) << 8));
 			return 0;
 		}
 	
@@ -1113,7 +1261,7 @@ CPU cpu;
 				if ((cpuAddrAbs & 0xFF00) != (cpu.PC & 0xFF00))
 					cpuCycles++;
 		
-				cpu.PC = cpuAddrAbs;
+				cpu_set_pc(cpuAddrAbs);
 			}
 			return 0;
 		}
@@ -1132,7 +1280,7 @@ CPU cpu;
 				if ((cpuAddrAbs & 0xFF00) != (cpu.PC & 0xFF00))
 					cpuCycles++;
 		
-				cpu.PC = cpuAddrAbs;
+				cpu_set_pc(cpuAddrAbs);
 			}
 			return 0;
 		}
@@ -1271,7 +1419,7 @@ CPU cpu;
 	*/
 		uint8_t cpu_EOR(){
 			cpu_fetch();
-			cpu.A = cpu.A ^ cpuFetched;
+			cpu_set_a(cpu.A ^ cpuFetched);
 			cpu_set_flag(Z, cpu.A == 0x00);
 			cpu_set_flag(N, cpu.A & 0x80);
 			return 1;
@@ -1324,7 +1472,7 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_JMP(){
-			cpu.PC = cpuAddrAbs;
+			cpu_set_pc(cpuAddrAbs);
 			return 0;
 		}
 		
@@ -1341,7 +1489,7 @@ CPU cpu;
 			cpu_write(0x0100 + cpu.SP, cpu.PC & 0x00FF);
 			cpu.SP--;
 		
-			cpu.PC = cpuAddrAbs;
+			cpu_set_pc(cpuAddrAbs);
 			return 0;
 		}
 		
@@ -1353,7 +1501,7 @@ CPU cpu;
 	*/
 		uint8_t cpu_LDA(){
 			cpu_fetch();
-			cpu.A = cpuFetched;
+			cpu_set_a(cpuFetched);
 			cpu_set_flag(Z, cpu.A == 0x00);
 			cpu_set_flag(N, cpu.A & 0x80);
 			return 1;
@@ -1366,8 +1514,7 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_LDX(){
-			cpu_fetch();
-			cpu.X = cpuFetched;
+			cpu_set_x(cpu_fetch());
 			cpu_set_flag(Z, cpu.X == 0x00);
 			cpu_set_flag(N, cpu.X & 0x80);
 			return 1;
@@ -1380,26 +1527,33 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_LDY(){
-			cpu_fetch();
-			cpu.Y = cpuFetched;
+			cpu_set_y(cpu_fetch());
 			cpu_set_flag(Z, cpu.Y == 0x00);
 			cpu_set_flag(N, cpu.Y & 0x80);
 			return 1;
 		}
 	
 	/**
+	* Instruction: Logical Shift Right
 	* @return uint8_t
 	*/
 		uint8_t cpu_LSR(){
 			cpu_fetch();
 			cpu_set_flag(C, cpuFetched & 0x0001);
+			
 			cpuTemp = cpuFetched >> 1;
 			cpu_set_flag(Z, (cpuTemp & 0x00FF) == 0x0000);
 			cpu_set_flag(N, cpuTemp & 0x0080);
-			if (lookup(cpuOPCode).addrmode == &cpu_IMP)
-				cpu.A = cpuTemp & 0x00FF;
-			else
+			
+			printf("---Set V,Z,N\n");
+			
+			if (lookupM[cpuOPCode].addrmode == &cpu_IMP){
+				cpu_set_a(cpuTemp & 0x00FF);
+				printf("---A set to %#02X [%d]\n", cpu.A, cpu.A);
+			} else {
 				cpu_write(cpuAddrAbs, cpuTemp & 0x00FF);
+				printf("---Memory %#04X set to %#02X [%d]\n", cpuAddrAbs, cpuTemp & 0x00FF, cpuTemp & 0x00FF);
+			}
 			return 0;
 		}
 	
@@ -1412,6 +1566,7 @@ CPU cpu;
 			// based on https://wiki.nesdev.com/w/index.php/CPU_unofficial_cpuOPCodes
 			// and will add more based on game compatibility, and ultimately
 			// I'd like to cover all illegal cpuOPCodes too
+			printf("---NOP\n");
 			switch (cpuOPCode) {
 				case 0x1C:
 				case 0x3C:
@@ -1433,8 +1588,8 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_ORA(){
-			cpu_fetch();
-			cpu.A = cpu.A | cpuFetched;
+			cpu_set_a(cpu.A | cpu_fetch());
+			printf("---A OR'd to %#02X and set Z,N\n", cpu.A);
 			cpu_set_flag(Z, cpu.A == 0x00);
 			cpu_set_flag(N, cpu.A & 0x80);
 			return 1;
@@ -1447,6 +1602,7 @@ CPU cpu;
 	*/
 		uint8_t cpu_PHA(){
 			cpu_write(0x0100 + cpu.SP, cpu.A);
+			printf("---Pushed %#02X [%d] to stack\n", cpu.A, cpu.A);
 			cpu.SP--;
 			return 0;
 		}
@@ -1459,6 +1615,7 @@ CPU cpu;
 	*/
 		uint8_t cpu_PHP(){
 			cpu_write(0x0100 + cpu.SP, cpu.status | B | U);
+			printf("---Pushed %#02X [%d] to stack and set B,U\n", cpu.status | B | U, cpu.status | B | U);
 			cpu_set_flag(B, 0);
 			cpu_set_flag(U, 0);
 			cpu.SP--;
@@ -1473,7 +1630,8 @@ CPU cpu;
 	*/
 		uint8_t cpu_PLA(){
 			cpu.SP++;
-			cpu.A = cpu_read(0x0100 + cpu.SP);
+			cpu_set_a(cpu_read(0x0100 + cpu.SP));
+			printf("---Popped %#02X [%d] to A and set Z,N\n", cpu.A, cpu.A);
 			cpu_set_flag(Z, cpu.A == 0x00);
 			cpu_set_flag(N, cpu.A & 0x80);
 			return 0;
@@ -1487,6 +1645,7 @@ CPU cpu;
 		uint8_t cpu_PLP(){
 			cpu.SP++;
 			cpu.status = cpu_read(0x0100 + cpu.SP);
+			printf("---Popped %#02X [%d] to status\n", cpu.status, cpu.status);
 			cpu_set_flag(U, 1);
 			return 0;
 		}
@@ -1504,8 +1663,8 @@ CPU cpu;
 			cpu_set_flag(C, cpuTemp & 0xFF00);
 			cpu_set_flag(Z, (cpuTemp & 0x00FF) == 0x0000);
 			cpu_set_flag(N, cpuTemp & 0x0080);
-			if (lookup(cpuOPCode).addrmode == &cpu_IMP)
-				cpu.A = cpuTemp & 0x00FF;
+			if (lookupM[cpuOPCode].addrmode == &cpu_IMP)
+				cpu_set_a(cpuTemp & 0x00FF);
 			else
 				cpu_write(cpuAddrAbs, cpuTemp & 0x00FF);
 			return 0;
@@ -1524,8 +1683,8 @@ CPU cpu;
 			cpu_set_flag(C, cpuFetched & 0x01);
 			cpu_set_flag(Z, (cpuTemp & 0x00FF) == 0x00);
 			cpu_set_flag(N, cpuTemp & 0x0080);
-			if (lookup(cpuOPCode).addrmode == &cpu_IMP)
-				cpu.A = cpuTemp & 0x00FF;
+			if (lookupM[cpuOPCode].addrmode == &cpu_IMP)
+				cpu_set_a(cpuTemp & 0x00FF);
 			else
 				cpu_write(cpuAddrAbs, cpuTemp & 0x00FF);
 			return 0;
@@ -1542,7 +1701,7 @@ CPU cpu;
 			cpu.status &= ~U;
 		
 			cpu.SP++;
-			cpu.PC = cpu_read(0x0100 + cpu.SP);
+			cpu_set_pc(cpu_read(0x0100 + cpu.SP));
 			cpu.SP++;
 			cpu.PC |= cpu_read(0x0100 + cpu.SP) << 8;
 			return 0;
@@ -1554,7 +1713,7 @@ CPU cpu;
 	*/
 		uint8_t cpu_RTS(){
 			cpu.SP++;
-			cpu.PC = cpu_read(0x0100 + cpu.SP);
+			cpu_set_pc(cpu_read(0x0100 + cpu.SP));
 			cpu.SP++;
 			cpu.PC |= cpu_read(0x0100 + cpu.SP) << 8;
 			
@@ -1569,6 +1728,7 @@ CPU cpu;
 	*/
 		uint8_t cpu_SEC(){
 			cpu_set_flag(C, true);
+			printf("---Set C\n");
 			return 0;
 		}
 	
@@ -1579,6 +1739,7 @@ CPU cpu;
 	*/
 		uint8_t cpu_SED(){
 			cpu_set_flag(D, true);
+			printf("---Set D\n");
 			return 0;
 		}
 	
@@ -1589,6 +1750,7 @@ CPU cpu;
 	*/
 		uint8_t cpu_SEI(){
 			cpu_set_flag(I, true);
+			printf("---Set I\n");
 			return 0;
 		}
 	
@@ -1629,9 +1791,10 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_TAX(){
-			cpu.X = cpu.A;
+			cpu_set_x(cpu.A);
 			cpu_set_flag(Z, cpu.X == 0x00);
 			cpu_set_flag(N, cpu.X & 0x80);
+			printf("---Transferred %#02X [%d] to X and set Z,N\n", cpu.A, cpu.A);
 			return 0;
 		}
 	
@@ -1642,9 +1805,10 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_TAY(){
-			cpu.Y = cpu.A;
+			cpu_set_y(cpu.A);
 			cpu_set_flag(Z, cpu.Y == 0x00);
 			cpu_set_flag(N, cpu.Y & 0x80);
+			printf("---Transferred %#02X [%d] to Y and set Z,N\n", cpu.A, cpu.A);
 			return 0;
 		}
 	
@@ -1655,9 +1819,10 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_TSX(){
-			cpu.X = cpu.SP;
+			cpu_set_x(cpu.SP);
 			cpu_set_flag(Z, cpu.X == 0x00);
 			cpu_set_flag(N, cpu.X & 0x80);
+			printf("---Transferred %#02X [%d] to X and set Z,N\n", cpu.SP, cpu.SP);
 			return 0;
 		}
 	
@@ -1668,9 +1833,10 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_TXA(){
-			cpu.A = cpu.X;
+			cpu_set_a(cpu.X);
 			cpu_set_flag(Z, cpu.A == 0x00);
 			cpu_set_flag(N, cpu.A & 0x80);
+			printf("---Transferred %#02X [%d] to A and set Z,N\n", cpu.X, cpu.X);
 			return 0;
 		}
 	
@@ -1680,7 +1846,8 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_TXS(){
-			cpu.SP = cpu.X;
+			cpu_set_sp(cpu.X);
+			printf("---Transferred %#02X [%d] to SP\n", cpu.X, cpu.X);
 			return 0;
 		}
 		
@@ -1691,9 +1858,10 @@ CPU cpu;
 	* * @return uint8_t
 	*/
 		uint8_t cpu_TYA(){
-			cpu.A = cpu.Y;
+			cpu_set_a(cpu.Y);
 			cpu_set_flag(Z, cpu.A == 0x00);
 			cpu_set_flag(N, cpu.A & 0x80);
+			printf("---Transferred %#02X [%d] to A and set Z,N\n", cpu.Y, cpu.Y);
 			return 0;
 		}
 	
@@ -1767,7 +1935,7 @@ int main(int argc, char *argv[])
 						ignoreNextEnter = false;
 					} else {
 						cpu_execute();
-						if(outputAllOnExecute && strcmp(cpuIns.name, "NOP") != 0){
+						if(outputAllOnExecute && strcmp(lookupM[cpuOPCode].name, "NOP") != 0){
 							printf("\n");
 							ram_draw(0x0000, 16, 16);
 							printf("\n");

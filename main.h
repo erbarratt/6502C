@@ -4,6 +4,7 @@
 #include <stdint-gcc.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 
 #define MAX_MEM (1024 * 64)
 
