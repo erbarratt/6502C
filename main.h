@@ -1,8 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint-gcc.h>
+#include <string.h>
+#include <unistd.h>
 
-#define MAX_MEM 1024 * 64
+#define MAX_MEM (1024 * 64)
 
 typedef struct {
 
@@ -11,6 +14,8 @@ typedef struct {
 } RAM;
 
 void ram_clear();
+void ram_load_program();
+void ram_draw(uint16_t nAddr, int nRows, int nColumns);
 
 typedef struct {
 
@@ -20,7 +25,7 @@ typedef struct {
 
 void bus_add_devices();
 void bus_write(uint16_t addr, uint8_t data);
-uint8_t bus_read(uint16_t addr, bool bReadOnly);
+uint8_t bus_read(uint16_t addr);
 
 typedef enum
 {
@@ -73,22 +78,25 @@ typedef struct
 	typedef struct
 	{
 		char name[50];
+		char label[50];
 		uint8_t     (*operate )(void);
 		uint8_t     (*addrmode)(void);
 		uint8_t cycles;
 	} INSTRUCTION;
 	
 INSTRUCTION lookup(uint8_t opCode);
-	
+
+void cpu_draw();
 uint8_t cpu_fetch();
 uint8_t cpu_get_flag(FLAGS6502 f);
 void cpu_set_flag(FLAGS6502 f, bool v);
 uint8_t cpu_read(uint16_t addr);
 void cpu_write(uint16_t addr, uint8_t data);
+void cpu_run_cycles();
 void cpu_reset();
 void cpu_irq();
 void cpu_nmi();
-void cpu_clock();
+void cpu_execute();
 
 
 // Addressing Modes =============================================
