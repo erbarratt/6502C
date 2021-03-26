@@ -9,7 +9,7 @@ char code[MAX_MEM][50];
 
 // Display range
 	uint16_t displayMemLoc = 0x9000;
-	size_t displayMemLen = 64;
+	size_t displayMemLen = 0x0040;
 
 // Represents the working input value to the ALU
 	uint8_t cpuFetched = 0x00;
@@ -85,11 +85,16 @@ char code[MAX_MEM][50];
 
 	void dis_clear(){
 	
-		int i;
-		for(i = 0; i < 64; i++){
-		
-			bus.dis.buffer[i] = (uint8_t )' ';
-		 
+		for(uint16_t i = 16; i < 144; i++){
+			
+			if(i % 2 == 0 || i == 16){
+				bus.dis.console[i] = 0xFF;
+				bus.ram.data[i+displayMemLoc] = 0xFF;
+			} else {
+				bus.dis.console[i] = 0x20;
+				bus.ram.data[i+displayMemLoc] = 0x20;
+			}
+			
 		}
 	
 	}
@@ -97,24 +102,45 @@ char code[MAX_MEM][50];
 	void dis_draw(){
 		
 		//10 dash's
-		printf("- - - - - - - - - -\n");
+			printf("\n");
 		
 		//lines
-		uint8_t addr = 0;
-		for(int i = 0; i < 8; i++){
-		
-			printf("| ");
-			for(int j = 0; j < 8; j++){
+			uint16_t addr = 16;
+			for(uint16_t i = 0; i < 8; i++){
 			
-				printf("%c ", bus.dis.buffer[addr]);
-				addr++;
+				printf("| >");
+				
+				bool charDisplay = false;
+				
+				for(uint16_t j = 0; j < 16; j++){
+				
+					if(j == 0 || j % 2 == 0){
+						
+						if(bus.dis.console[addr] == 0xFF){
+							charDisplay = true;
+						}
+						
+						printf(" ");
+						
+					} else {
+				
+						if(charDisplay){
+							printf("%c", bus.dis.console[addr]);
+						} else {
+							printf("%d", bus.dis.console[addr]);
+						}
+				
+					}
+					
+					addr++;
+				
+				}
+				
+				printf("\n");
 			
 			}
-			printf("|\n");
 		
-		}
-		
-		printf("- - - - - - - - - -\n");
+		printf("\n");
 		
 	}
 	
@@ -292,7 +318,8 @@ char code[MAX_MEM][50];
 			
 			// Convert hex string into bytes for RAM
 			//A2 0A 8E 00 00 A2 03 8E 01 00 AC 00 00 A9 00 18 6D 01 00 88 D0 FA 8D 02 00 EA EA EA
-			uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0x8D,0x00,0x90,0xEA,0xEA,0XEA,0XEA };
+			//uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0x8D,0x00,0x90,0xEA,0xEA,0XEA,0XEA };
+			uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0xA2,0x00,0x8E,0x10,0x90,0x8D,0x11,0x90};
 			programSize = sizeof prog / sizeof prog[0];
 			printf("%d\n", programSize);
 			programStart = 0x8000;
@@ -378,14 +405,14 @@ char code[MAX_MEM][50];
 			bus.ram.data[addr] = data;
 			
 			//we're writing to display memory location, so update display
-			if(addr >= 0x9000 && addr <= 0x9040){
-				bus.dis.buffer[addr-0x9000] = data;
-				printf("--> Wrote 0X");
-				getHashString(&data, 2);
-				printf(" [%d] into display buffer: 0X", data);
-				getHashString(&addr-0x9000, 4);
-				printf("\n");
-			}
+				if(addr >= displayMemLoc && addr <= displayMemLoc+displayMemLen){
+					bus.dis.console[addr-displayMemLoc] = data;
+					printf("--> Wrote 0X");
+					getHashString(&data, 2);
+					printf(" [%d] into display buffer: 0X", data);
+					getHashString(&addr-displayMemLoc, 4);
+					printf("\n");
+				}
 		
 		}
 	
@@ -436,6 +463,10 @@ char code[MAX_MEM][50];
 				ANSI_COLOR_RESET);
 		}
 		
+	/**
+	* Returns the char that represents a given bit field flag
+	* @return char
+	 */
 		char flagStr(FLAGS6502 f){
 			if(f == C)
 				return 'C';
@@ -2286,12 +2317,12 @@ int main(int argc, char *argv[])
 	
 	//add ram to bus
 		bus_add_devices();
-		
-	//clear display memory
-		dis_clear();
 	
 	//clear ram of any standing data
 		ram_clear();
+		
+	//clear display memory, also writes initial mem state back to ram
+		dis_clear();
 		
 	//fill dissassemble array with starting state of memory (NOP's)
 		code_fillBlank();
@@ -2391,9 +2422,11 @@ int main(int argc, char *argv[])
 			//memory dump
 				else if(strcmp(&consoleCommand[0], "m") == 0){
 					printf("Memory Dump\n");
-					ram_draw(0x0000, 16, 16);
+					ram_draw(0x0000, 4, 16);
 					printf("\n");
-					ram_draw(0x8000, 16, 16);
+					ram_draw(0x8000, 4, 16);
+					printf("\n");
+					ram_draw(0x9000, 9, 16);
 					ignoreNextEnter = true;
 				}
 				

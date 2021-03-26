@@ -17,9 +17,7 @@
 	char ANSI_COLOR_RESET[] = "\x1b[0m";
 
 typedef struct {
-
-	char buffer[64];
-
+	uint8_t console[128];
 } DIS;
 
 typedef struct {
