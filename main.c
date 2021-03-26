@@ -1,10 +1,15 @@
 #include "main.h"
 
+DIS dis;
 RAM ram;
 Bus bus;
 CPU cpu;
 
 char code[MAX_MEM][50];
+
+// Display range
+	uint16_t displayMemLoc = 0x9000;
+	size_t displayMemLen = 64;
 
 // Represents the working input value to the ALU
 	uint8_t cpuFetched = 0x00;
@@ -42,6 +47,7 @@ char code[MAX_MEM][50];
 //start addr of program
 	uint16_t programStart = 0x0000;
 	
+	
 /**
 * Assembles the translation table. It's big, it's ugly, but it yields a convenient way
 * to emulate the 6502. I'm certain there are some "code-golf" strategies to reduce this
@@ -73,6 +79,47 @@ char code[MAX_MEM][50];
 		{"CPX", "Compare with X, Immediate", &cpu_CPX, &cpu_IMM, 2 },	            {"SBC", "Subtract with Carry, X-indexed, Indirect", &cpu_SBC, &cpu_IZX, 6 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"CPX", "Compare with X, Zero Paged", &cpu_CPX, &cpu_ZP0, 3 },	    {"SBC", "Subtract with Carry, Zero Paged", &cpu_SBC, &cpu_ZP0, 3 },	        {"INC", "Increment, Zero Paged", &cpu_INC, &cpu_ZP0, 5 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	    {"INX", "Increment X, Implied", &cpu_INX, &cpu_IMP, 2 },	            {"SBC", "Subtract with Carry, Immediate", &cpu_SBC, &cpu_IMM, 2 },	            {"NOP", "No Operation, Implied", &cpu_NOP, &cpu_IMP, 2 },	        {"???", "Illegal, Implied", &cpu_SBC, &cpu_IMP, 2 },	{"CPX", "Compare with X, Absolute", &cpu_CPX, &cpu_ABS, 4 },     {"SBC", "Subtract with Carry, Absolute", &cpu_SBC, &cpu_ABS, 4 },	            {"INC", "Increment, Absolute", &cpu_INC, &cpu_ABS, 6 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
 		{"BEQ", "Branch on Equal, Relative", &cpu_BEQ, &cpu_REL, 2 },            	{"SBC", "Subtract with Carry, Y-indexed, Indirect", &cpu_SBC, &cpu_IZY, 5 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"SBC", "Subtract with Carry", &cpu_SBC, &cpu_ZPX, 4 },	                    {"INC", "Increment, Zero Paged, X-indexed", &cpu_INC, &cpu_ZPX, 6 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	    {"SED", "Set Decimal, Implied", &cpu_SED, &cpu_IMP, 2 },	            {"SBC", "Subtract with Carry, Absolute, Y-indexed", &cpu_SBC, &cpu_ABY, 4 },	    {"NOP", "No Operation, Implied", &cpu_NOP, &cpu_IMP, 2 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"SBC", "Subtract with Carry, Absolute, X-indexed", &cpu_SBC, &cpu_ABX, 4 },	    {"INC", "Increment, Absolute, X-indexed", &cpu_INC, &cpu_ABX, 7 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 }
 	};
+	
+///////////////////////////////////////////////////////////////////////////////
+// Display FUNCTIONS
+
+	void dis_clear(){
+	
+		int i;
+		for(i = 0; i < 64; i++){
+		
+			bus.dis.buffer[i] = (uint8_t )' ';
+		 
+		}
+	
+	}
+	
+	void dis_draw(){
+		
+		//10 dash's
+		printf("- - - - - - - - - -\n");
+		
+		//lines
+		uint8_t addr = 0;
+		for(int i = 0; i < 8; i++){
+		
+			printf("| ");
+			for(int j = 0; j < 8; j++){
+			
+				printf("%c ", bus.dis.buffer[addr]);
+				addr++;
+			
+			}
+			printf("|\n");
+		
+		}
+		
+		printf("- - - - - - - - - -\n");
+		
+	}
+	
+///////////////////////////////////////////////////////////////////////////////
+// Disassembler FUNCTIONS
 	
 	/**
 	* Write formatted hash string to console
@@ -245,8 +292,9 @@ char code[MAX_MEM][50];
 			
 			// Convert hex string into bytes for RAM
 			//A2 0A 8E 00 00 A2 03 8E 01 00 AC 00 00 A9 00 18 6D 01 00 88 D0 FA 8D 02 00 EA EA EA
-			uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0xEA,0xEA,0xEA };
+			uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0x8D,0x00,0x90,0xEA,0xEA,0XEA,0XEA };
 			programSize = sizeof prog / sizeof prog[0];
+			printf("%d\n", programSize);
 			programStart = 0x8000;
 			uint16_t nOffset = programStart;
 			int i = 0;
@@ -312,6 +360,9 @@ char code[MAX_MEM][50];
 		void bus_add_devices()
 		{
 		
+			printf("%sAdded Display device to bus.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
+			bus.dis = dis;
+		
 			printf("%sAdded Ram device to bus.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
 			bus.ram = ram;
 		
@@ -325,6 +376,16 @@ char code[MAX_MEM][50];
 		{
 		
 			bus.ram.data[addr] = data;
+			
+			//we're writing to display memory location, so update display
+			if(addr >= 0x9000 && addr <= 0x9040){
+				bus.dis.buffer[addr-0x9000] = data;
+				printf("--> Wrote 0X");
+				getHashString(&data, 2);
+				printf(" [%d] into display buffer: 0X", data);
+				getHashString(&addr-0x9000, 4);
+				printf("\n");
+			}
 		
 		}
 	
@@ -2162,11 +2223,15 @@ char code[MAX_MEM][50];
 			printf("\n");
 			code_draw(cpuLastOpAddr);
 			printf("\n");
-			ram_draw(0x0000, 8, 16);
+			ram_draw(0x0000, 2, 16);
 			printf("\n");
-			ram_draw(0x8000, 8, 16);
+			ram_draw(0x8000, 2, 16);
+			printf("\n");
+			ram_draw(0x9000, 2, 16);
 			printf("\n");
 			cpu_draw();
+			printf("\n");
+			dis_draw();
 			printf("\n");
 		}
 
@@ -2180,8 +2245,9 @@ int main(int argc, char *argv[])
 		bool outputMemOnExecute = false;
 		bool outputCPUOnExecute = false;
 		bool outputCodeOnExecute = false;
+		bool outputDisOnExecute = false;
 		int opt;
-		while ((opt = getopt(argc, argv, "-mcpa")) != -1) {
+		while ((opt = getopt(argc, argv, "-mcpad")) != -1) {
 			
 			switch (opt) {
 					case 'm':
@@ -2200,6 +2266,10 @@ int main(int argc, char *argv[])
 						outputAllOnExecute = true;
 					break;
 					
+					case 'd':
+						outputDisOnExecute = true;
+					break;
+					
 				//option not in optstring
 					case '?':
 					default:
@@ -2216,6 +2286,9 @@ int main(int argc, char *argv[])
 	
 	//add ram to bus
 		bus_add_devices();
+		
+	//clear display memory
+		dis_clear();
 	
 	//clear ram of any standing data
 		ram_clear();
@@ -2227,7 +2300,7 @@ int main(int argc, char *argv[])
 		ram_load_program();
 		
 	//disassemble into code array
-		disassemble(0x8000, 0x8018);
+		disassemble(0x8000, 0x801F);
 		
 	printf("\n%s6502 Powered On.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
 	
@@ -2255,6 +2328,11 @@ int main(int argc, char *argv[])
 		
 			if(outputCPUOnExecute){
 				cpu_draw();
+				printf("\n");
+			}
+			
+			if(outputDisOnExecute){
+				dis_draw();
 				printf("\n");
 			}
 		
@@ -2300,6 +2378,11 @@ int main(int argc, char *argv[])
 								printf("\n");
 							}
 						
+							if(outputDisOnExecute){
+								dis_draw();
+								printf("\n");
+							}
+						
 						}
 						
 					}
@@ -2332,6 +2415,13 @@ int main(int argc, char *argv[])
 				else if(strcmp(&consoleCommand[0], "p") == 0){
 					printf("Program Dump\n");
 					code_draw(cpuLastOpAddr);
+					ignoreNextEnter = true;
+				}
+				
+			//program dump
+				else if(strcmp(&consoleCommand[0], "p") == 0){
+					printf("Display Dump\n");
+					dis_draw();
 					ignoreNextEnter = true;
 				}
 				

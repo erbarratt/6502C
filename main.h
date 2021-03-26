@@ -18,6 +18,12 @@
 
 typedef struct {
 
+	char buffer[64];
+
+} DIS;
+
+typedef struct {
+
 	uint8_t data[MAX_MEM];
 
 } RAM;
@@ -25,6 +31,7 @@ typedef struct {
 typedef struct {
 
 	RAM ram;
+	DIS dis;
 
 } Bus;
 
