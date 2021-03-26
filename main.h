@@ -8,25 +8,25 @@
 
 #define MAX_MEM (1024 * 64)
 
+	char ANSI_COLOR_RED[] = "\x1b[31m";
+	char ANSI_COLOR_GREEN[] = "\x1b[32m";
+	char ANSI_COLOR_YELLOW[] = "\x1b[33m";
+	char ANSI_COLOR_BLUE[] = "\x1b[34m";
+	char ANSI_COLOR_MAGENTA[] = "\x1b[35m";
+	char ANSI_COLOR_CYAN[] = "\x1b[36m";
+	char ANSI_COLOR_RESET[] = "\x1b[0m";
+
 typedef struct {
 
 	uint8_t data[MAX_MEM];
 
 } RAM;
 
-void ram_clear();
-void ram_load_program();
-void ram_draw(uint16_t nAddr, int nRows, int nColumns);
-
 typedef struct {
 
 	RAM ram;
 
 } Bus;
-
-void bus_add_devices();
-void bus_write(uint16_t addr, uint8_t data);
-uint8_t bus_read(uint16_t addr);
 
 typedef enum
 {
@@ -84,21 +84,6 @@ typedef struct
 		uint8_t     (*addrmode)(void);
 		uint8_t cycles;
 	} INSTRUCTION;
-	
-INSTRUCTION lookup(uint8_t opCode);
-
-void cpu_draw();
-uint8_t cpu_fetch();
-uint8_t cpu_get_flag(FLAGS6502 f);
-void cpu_set_flag(FLAGS6502 f, bool v);
-uint8_t cpu_read(uint16_t addr);
-void cpu_write(uint16_t addr, uint8_t data);
-void cpu_run_cycles();
-void cpu_reset();
-void cpu_irq();
-void cpu_nmi();
-void cpu_execute();
-
 
 // Addressing Modes =============================================
 // The 6502 has a variety of addressing modes to access data in
@@ -163,5 +148,3 @@ void cpu_execute();
 // I capture all "unofficial" opcodes with this function. It is
 // functionally identical to a NOP
 	uint8_t cpu_XXX();
-	
-	bool cpu_complete();
