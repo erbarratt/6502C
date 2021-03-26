@@ -36,6 +36,12 @@ char code[MAX_MEM][50];
 //flag to see if we've run through memory or not
 	bool cpuExecuting = true;
 	
+//size of program in bytes
+	int programSize = 0;
+	
+//start addr of program
+	uint16_t programStart = 0x0000;
+	
 /**
 * Assembles the translation table. It's big, it's ugly, but it yields a convenient way
 * to emulate the 6502. I'm certain there are some "code-golf" strategies to reduce this
@@ -240,10 +246,11 @@ char code[MAX_MEM][50];
 			// Convert hex string into bytes for RAM
 			//A2 0A 8E 00 00 A2 03 8E 01 00 AC 00 00 A9 00 18 6D 01 00 88 D0 FA 8D 02 00 EA EA EA
 			uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0xEA,0xEA,0xEA };
-			
-			uint16_t nOffset = 0x8000;
+			programSize = sizeof prog / sizeof prog[0];
+			programStart = 0x8000;
+			uint16_t nOffset = programStart;
 			int i = 0;
-			while (i < 28)
+			while (i < programSize)
 			{
 				bus.ram.data[nOffset] = prog[i];
 				nOffset++;
@@ -589,6 +596,9 @@ char code[MAX_MEM][50];
 		
 			// Set it
 				cpu_set_pc((hi << 8) | lo);
+				
+			//so code_drawstarts at correct place
+				cpuLastOpAddr = cpu.PC;
 		
 			// Reset internal registers
 				cpu_set_a(0);
@@ -1962,184 +1972,203 @@ char code[MAX_MEM][50];
 		uint8_t cpu_XXX(){
 			return 0;
 		}
-
-// This is the disassembly function. Its workings are not required for emulation.
-// It is merely a convenience function to turn the binary instruction code into
-// human readable form. Its included as part of the emulator because it can take
-// advantage of many of the CPUs internal operations to do this.
-void disassemble(uint16_t nStart, uint16_t nStop)
-{
-
-	//set starting address casting to uint32
-	uint32_t addr = (uint32_t)nStart;
-	
-	//some helper vars
-	uint8_t value = 0x00, lo = 0x00, hi = 0x00;
-	
-	uint16_t line_addr = 0;
-
-	// Starting at the specified address we read an instruction
-	// byte, which in turn yields information from the lookup table
-	// as to how many additional bytes we need to read and what the
-	// addressing mode is. I need this info to assemble human readable
-	// syntax, which is different depending upon the addressing mode
-
-	// As the instruction is decoded, a std::string is assembled
-	// with the readable output
-	while (addr <= (uint32_t)nStop)
-	{
-	
-		line_addr = addr;
-
-		// Prefix line with instruction address
-			char line[50] = "0x";
-			char hashTemp[5]; //+1 for \0
-			hex(line_addr, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, ": ");
-
-		// Read instruction, and get its readable name
-		uint8_t opcode = bus_read((uint16_t)addr); addr++;
-		strcat(line, lookupM[opcode].name);
-		strcat(line, "\t");
-
-		// Get oprands from desired locations, and form the
-		// instruction based upon its addressing mode. These
-		// routines mimmick the actual fetch routine of the
-		// 6502 in order to get accurate data as part of the
-		// instruction
-		if (lookupM[opcode].addrmode == &cpu_IMP){
 		
-			strcat(line, "\t{IMP}");
+	/*
+	* This is the disassembly function. Its workings are not required for emulation.
+	* It is merely a convenience function to turn the binary instruction code into
+	* human readable form. Its included as part of the emulator because it can take
+	* advantage of many of the CPUs internal operations to do this.
+	* @return void
+	*/
+		void disassemble(uint16_t nStart, uint16_t nStop)
+		{
+		
+			//set starting address casting to uint32
+			uint32_t addr = (uint32_t)nStart;
 			
-		} else if (lookupM[opcode].addrmode == &cpu_IMM){
-		
-			strcpy(code[addr], "---");
-			value = bus_read(addr); addr++;
-			strcat(line, "#0x");
-			hex(value, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, "\t{IMM}");
+			//some helper vars
+			uint8_t value = 0x00, lo = 0x00, hi = 0x00;
 			
-		} else if (lookupM[opcode].addrmode == &cpu_ZP0){
+			uint16_t line_addr = 0;
 		
-			strcpy(code[addr], "---");
-			lo = bus_read(addr); addr++;
-			hi = 0x00;
-			strcat(line, "0x");
-			hex(lo, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, "\t{ZP0}");
+			// Starting at the specified address we read an instruction
+			// byte, which in turn yields information from the lookup table
+			// as to how many additional bytes we need to read and what the
+			// addressing mode is. I need this info to assemble human readable
+			// syntax, which is different depending upon the addressing mode
+		
+			// As the instruction is decoded, a std::string is assembled
+			// with the readable output
+			while (addr <= (uint32_t)nStop)
+			{
 			
-		} else if (lookupM[opcode].addrmode == &cpu_ZPX){
+				line_addr = addr;
 		
-			strcpy(code[addr], "---");
-			lo = bus_read(addr); addr++;
-			hi = 0x00;
-			strcat(line, "0x");
-			hex(lo, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, ", X\t{ZPX}");
+				// Prefix line with instruction address
+					char line[50] = "0x";
+					char hashTemp[5]; //+1 for \0
+					hex(line_addr, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, ": ");
+		
+				// Read instruction, and get its readable name
+				uint8_t opcode = bus_read((uint16_t)addr); addr++;
+				strcat(line, lookupM[opcode].name);
+				strcat(line, "\t");
+		
+				// Get oprands from desired locations, and form the
+				// instruction based upon its addressing mode. These
+				// routines mimmick the actual fetch routine of the
+				// 6502 in order to get accurate data as part of the
+				// instruction
+				if (lookupM[opcode].addrmode == &cpu_IMP){
+				
+					strcat(line, "\t{IMP}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_IMM){
+				
+					strcpy(code[addr], "---");
+					value = bus_read(addr); addr++;
+					strcat(line, "#0x");
+					hex(value, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, "\t{IMM}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_ZP0){
+				
+					strcpy(code[addr], "---");
+					lo = bus_read(addr); addr++;
+					hi = 0x00;
+					strcat(line, "0x");
+					hex(lo, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, "\t{ZP0}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_ZPX){
+				
+					strcpy(code[addr], "---");
+					lo = bus_read(addr); addr++;
+					hi = 0x00;
+					strcat(line, "0x");
+					hex(lo, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, ", X\t{ZPX}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_ZPY){
+				
+					strcpy(code[addr], "---");
+					lo = bus_read(addr); addr++;
+					hi = 0x00;
+					strcat(line, "0x");
+					hex(lo, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, ", Y\t{ZPY}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_IZX){
+				
+					strcpy(code[addr], "---");
+					lo = bus_read(addr); addr++;
+					hi = 0x00;
+					strcat(line, "(0x");
+					hex(lo, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, ", X)\t{IZX}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_IZY){
+				
+					strcpy(code[addr], "---");
+					lo = bus_read(addr); addr++;
+					hi = 0x00;
+					strcat(line, "(0x");
+					hex(lo, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, "), Y\t{IZY}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_ABS){
+				
+					strcpy(code[addr], "---");
+					lo = bus_read(addr); addr++;
+					strcpy(code[addr], "---");
+					hi = bus_read(addr); addr++;
+					strcat(line, "$0x");
+					hex((uint16_t)(hi << 8) | lo, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, "\t{ABS}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_ABX){
+				
+					strcpy(code[addr], "---");
+					lo = bus_read(addr); addr++;
+					strcpy(code[addr], "---");
+					hi = bus_read(addr); addr++;
+					strcat(line, "$0x");
+					hex((uint16_t)(hi << 8) | lo, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, ", X\t{ABX}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_ABY){
+				
+					strcpy(code[addr], "---");
+					lo = bus_read(addr); addr++;
+					strcpy(code[addr], "---");
+					hi = bus_read(addr); addr++;
+					strcat(line, "$0x");
+					hex((uint16_t)(hi << 8) | lo, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, ", Y\t{ABY}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_IND){
+				
+					strcpy(code[addr], "---");
+					lo = bus_read(addr); addr++;
+					strcpy(code[addr], "---");
+					hi = bus_read(addr); addr++;
+					strcat(line, "(0x");
+					hex((uint16_t)(hi << 8) | lo, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, ")\t{IND}");
+					
+				} else if (lookupM[opcode].addrmode == &cpu_REL){
+				
+					strcpy(code[addr], "---");
+					value = bus_read(addr); addr++;
+					strcat(line, "(0x");
+					hex(value, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, ") [0x");
+					hex(addr + value, 4, hashTemp);
+					strcat(line, hashTemp);
+					strcat(line, "]\t{REL}");
+					
+				}
+		
+				// Add the formed string to code[], using the instruction's
+				// address as the key. This makes it convenient to look for later
+				// as the instructions are variable in length, so a straight up
+				// incremental index is not sufficient.
+				strcpy(code[line_addr], line);
+				
+			}
 			
-		} else if (lookupM[opcode].addrmode == &cpu_ZPY){
-		
-			strcpy(code[addr], "---");
-			lo = bus_read(addr); addr++;
-			hi = 0x00;
-			strcat(line, "0x");
-			hex(lo, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, ", Y\t{ZPY}");
-			
-		} else if (lookupM[opcode].addrmode == &cpu_IZX){
-		
-			strcpy(code[addr], "---");
-			lo = bus_read(addr); addr++;
-			hi = 0x00;
-			strcat(line, "(0x");
-			hex(lo, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, ", X)\t{IZX}");
-			
-		} else if (lookupM[opcode].addrmode == &cpu_IZY){
-		
-			strcpy(code[addr], "---");
-			lo = bus_read(addr); addr++;
-			hi = 0x00;
-			strcat(line, "(0x");
-			hex(lo, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, "), Y\t{IZY}");
-			
-		} else if (lookupM[opcode].addrmode == &cpu_ABS){
-		
-			strcpy(code[addr], "---");
-			lo = bus_read(addr); addr++;
-			strcpy(code[addr], "---");
-			hi = bus_read(addr); addr++;
-			strcat(line, "0x");
-			hex((uint16_t)(hi << 8) | lo, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, "\t{ABS}");
-			
-		} else if (lookupM[opcode].addrmode == &cpu_ABX){
-		
-			strcpy(code[addr], "---");
-			lo = bus_read(addr); addr++;
-			strcpy(code[addr], "---");
-			hi = bus_read(addr); addr++;
-			strcat(line, "0x");
-			hex((uint16_t)(hi << 8) | lo, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, ", X\t{ABX}");
-			
-		} else if (lookupM[opcode].addrmode == &cpu_ABY){
-		
-			strcpy(code[addr], "---");
-			lo = bus_read(addr); addr++;
-			strcpy(code[addr], "---");
-			hi = bus_read(addr); addr++;
-			strcat(line, "0x");
-			hex((uint16_t)(hi << 8) | lo, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, ", Y\t{ABY}");
-			
-		} else if (lookupM[opcode].addrmode == &cpu_IND){
-		
-			strcpy(code[addr], "---");
-			lo = bus_read(addr); addr++;
-			strcpy(code[addr], "---");
-			hi = bus_read(addr); addr++;
-			strcat(line, "(0x");
-			hex((uint16_t)(hi << 8) | lo, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, ")\t{IND}");
-			
-		} else if (lookupM[opcode].addrmode == &cpu_REL){
-		
-			strcpy(code[addr], "---");
-			value = bus_read(addr); addr++;
-			strcat(line, "(0x");
-			hex(value, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, ") [0x");
-			hex(addr + value, 4, hashTemp);
-			strcat(line, hashTemp);
-			strcat(line, "]\t{REL}");
+			printf("%sProgram Disassembled.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
 			
 		}
 
-		// Add the formed string to code[], using the instruction's
-		// address as the key. This makes it convenient to look for later
-		// as the instructions are variable in length, so a straight up
-		// incremental index is not sufficient.
-		strcpy(code[line_addr], line);
-		
-	}
-	
-	printf("%sProgram Disassembled.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
-	
-}
+	/**
+	* Draw all system output types to console
+	* @return void
+	*/
+		void drawAll(){
+			printf("\n");
+			code_draw(cpuLastOpAddr);
+			printf("\n");
+			ram_draw(0x0000, 8, 16);
+			printf("\n");
+			ram_draw(0x8000, 8, 16);
+			printf("\n");
+			cpu_draw();
+			printf("\n");
+		}
 
 int main(int argc, char *argv[])
 {
@@ -2148,12 +2177,25 @@ int main(int argc, char *argv[])
 	// it were the argument of an option with character code 1.
 	// (This is used by programs that were written to expect options and other argv-elements in any order and that care about the ordering of the two.)
 		bool outputAllOnExecute = false;
+		bool outputMemOnExecute = false;
+		bool outputCPUOnExecute = false;
+		bool outputCodeOnExecute = false;
 		int opt;
-		while ((opt = getopt(argc, argv, "-a")) != -1) {
+		while ((opt = getopt(argc, argv, "-mcpa")) != -1) {
 			
 			switch (opt) {
-				
-				//get file pointer
+					case 'm':
+						outputMemOnExecute = true;
+					break;
+					
+					case 'c':
+						outputCPUOnExecute = true;
+					break;
+					
+					case 'p':
+						outputCodeOnExecute = true;
+					break;
+					
 					case 'a':
 						outputAllOnExecute = true;
 					break;
@@ -2161,7 +2203,7 @@ int main(int argc, char *argv[])
 				//option not in optstring
 					case '?':
 					default:
-						printf("Option not in option list of [a]");
+						printf("Option not in option list of [-mcpa]");
 						exit(EXIT_FAILURE);
 				
 			}
@@ -2192,6 +2234,32 @@ int main(int argc, char *argv[])
 	//turn on the system
 		cpu_reset();
 	
+	//draw any initial states from passed options
+		if(outputAllOnExecute){
+			drawAll();
+		} else {
+		
+			printf("\n");
+			
+			if(outputCodeOnExecute){
+				code_draw(cpuLastOpAddr);
+				printf("\n");
+			}
+			
+			if(outputMemOnExecute){
+				ram_draw(0x0000, 8, 16);
+				printf("\n");
+				ram_draw(0x8000, 8, 16);
+				printf("\n");
+			}
+		
+			if(outputCPUOnExecute){
+				cpu_draw();
+				printf("\n");
+			}
+		
+		}
+	
 	//store input
 		char consoleCommand[2] = " \0";
 	
@@ -2210,15 +2278,28 @@ int main(int argc, char *argv[])
 					} else {
 						cpu_execute();
 						if(outputAllOnExecute){
+							drawAll();
+						} else {
+						
 							printf("\n");
-							code_draw(cpuLastOpAddr);
-							printf("\n");
-							ram_draw(0x0000, 8, 16);
-							printf("\n");
-							ram_draw(0x8000, 8, 16);
-							printf("\n");
-							cpu_draw();
-							printf("\n");
+							
+							if(outputCodeOnExecute){
+								code_draw(cpuLastOpAddr);
+								printf("\n");
+							}
+							
+							if(outputMemOnExecute){
+								ram_draw(0x0000, 8, 16);
+								printf("\n");
+								ram_draw(0x8000, 8, 16);
+								printf("\n");
+							}
+						
+							if(outputCPUOnExecute){
+								cpu_draw();
+								printf("\n");
+							}
+						
 						}
 						
 					}
@@ -2250,18 +2331,13 @@ int main(int argc, char *argv[])
 			//program dump
 				else if(strcmp(&consoleCommand[0], "p") == 0){
 					printf("Program Dump\n");
+					code_draw(cpuLastOpAddr);
 					ignoreNextEnter = true;
 				}
 				
 			//all
 				else if(strcmp(&consoleCommand[0], "a") == 0){
-					printf("System Dump\n");
-					ram_draw(0x0000, 16, 16);
-					printf("\n");
-					ram_draw(0x8000, 16, 16);
-					printf("\n");
-					cpu_draw();
-					printf("\n");
+					drawAll();
 					ignoreNextEnter = true;
 				}
 				
