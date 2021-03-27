@@ -1,10 +1,12 @@
 #include "main.h"
 
-DIS dis;
-RAM ram;
-Bus bus;
-CPU cpu;
+//declare the vars
+	DIS dis;
+	RAM ram;
+	Bus bus;
+	CPU cpu;
 
+//holder for disassembler code
 char code[MAX_MEM][50];
 
 // Display range
@@ -12,10 +14,7 @@ char code[MAX_MEM][50];
 	uint16_t displayMemLen = 0x0130;
 	uint16_t disBufferOffset = 0x0010;
 	uint16_t disConsoleOffset = 0x0030;
-	uint16_t disConsoleLength = 256;
 	uint8_t disOPCode = 0x0000;
-	uint8_t disCycles = 0;
-	bool disCyclesInit = false;
 
 // Represents the working input value to the ALU
 	uint8_t cpuFetched = 0x00;
@@ -98,6 +97,186 @@ char code[MAX_MEM][50];
 	};
 	
 ///////////////////////////////////////////////////////////////////////////////
+// Disassembler FUNCTIONS
+	
+	/**
+	* Write formatted hash string to console
+	* @return void
+	*/
+		void getHashString(void *hex, size_t size){
+			
+			if(size == 2){
+			
+				uint8_t num = *(uint8_t*) hex;
+				char hash[5];
+				sprintf(hash,"%02X", num);
+				printf("%s", hash);
+			
+			} else {
+			
+				uint16_t num = *(uint16_t*) hex;
+				char hash[] = "0000";
+				sprintf(hash,"%04X", num);
+				hash[size] = '\0';
+				printf("%s", hash);
+			
+			}
+		
+		}
+		
+	/**
+	* Pust hex string in dest.
+	* @return void
+	*/
+		void hex(uint16_t hex, size_t size, char * dest) {
+			size = (size > 8) ? 8 : size;
+			char tmp[9]; //max 8 chars
+			snprintf(tmp, 8,"%04X", hex);
+			tmp[size] = '\0';
+			strncpy(dest, tmp, size+1);
+		}
+		
+	/**
+	* Fill code[] with NOP instructions, ready for disassembler to fill in
+	* @return void
+	*/
+		void code_fillBlank(){
+	
+			char hashTemp[5];
+	
+			for(int i = 0; i <= MAX_MEM; i++){
+				char line[50] = "0x";
+				hex(i,4, hashTemp);
+				strcat(line, hashTemp);
+				strcat(line, ": NOP\t{IMP}");
+				strcpy(code[i], line);
+			}
+		
+		}
+		
+	/**
+	* Draw out surrounding instructions from code[] at given memory location
+	* @return void
+	*/
+		void code_draw(uint16_t addr, uint8_t linesAmount){
+		
+			char lines[linesAmount][50];
+			
+			int lower = 0, count = 0, nullLines = 0;
+			uint16_t start;
+			uint16_t lastOpAddrFound = 0;
+			start = addr;
+			
+			//adjust so always oddd
+				if(linesAmount % 2 != 0){
+					linesAmount++;
+				}
+			
+			//midpoint
+				uint8_t midPoint = (uint8_t)(linesAmount / 2)-1;
+			
+			//go backwards finding the 3 instructions before the current.
+			//in the dissassembler, inter-instruction memorylocations are padded with ---
+			//these are ignored as aren't instructions
+			//programs are always surrounded with NOP commands from memory + code[] init
+				while(lower < midPoint){
+					
+					start--;
+					
+					if(strcmp(code[start], "---") != 0){
+						lower++;
+						lastOpAddrFound = start;
+					} else {
+					
+						nullLines++;
+						if(nullLines == 6){
+							start = lastOpAddrFound;
+							
+							for(int i = 0; i <= midPoint-lower; i++){
+								strcpy(lines[i], "---");
+							}
+							
+							count = midPoint-lower;
+							lower = midPoint;
+						}
+						
+					}
+				
+				}
+				
+			//now move forward from this position, ignore --- and store the op line
+				while(count < linesAmount){
+				
+					if(strcmp(code[start], "---") != 0){
+						strcpy(lines[count], code[start]);
+						count++;
+					}
+					
+					start++;
+				
+				}
+			
+			//finally now we have full lines, output them highlighting current instruction
+				for(int i = 0; i < linesAmount; i++){
+					if(i == midPoint){
+						printf("%s%s%s\n", ANSI_COLOR_CYAN, lines[i], ANSI_COLOR_RESET);
+					} else {
+						printf("%s\n", lines[i]);
+					}
+				}
+		
+		}
+	
+///////////////////////////////////////////////////////////////////////////////
+// BUS FUNCTIONS
+	
+	/**
+	* Add "deives" to bus struct. May be used in future to change bus attached devices
+	* @return void
+	*/
+		void bus_add_devices()
+		{
+		
+			printf("%sAdded Display device to bus.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
+			bus.dis = dis;
+		
+			printf("%sAdded Ram device to bus.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
+			bus.ram = ram;
+		
+		}
+	
+	/**
+	* Write to attached RAM through Bus
+	* @return void
+	*/
+		void bus_write(uint16_t addr, uint8_t data)
+		{
+		
+			bus.ram.data[addr] = data;
+			
+			//we're writing to display memory location, so update display
+				if(addr >= displayMemLoc && addr <= displayMemLoc+displayMemLen){
+					printf("--> Wrote 0X");
+					getHashString(&data, 2);
+					printf(" [%d] into display memory: 0X", addr);
+					getHashString(&addr, 4);
+					printf("\n");
+				}
+		
+		}
+	
+	/**
+	* Read RAM through Bus
+	* @return uint8_t
+	*/
+		uint8_t bus_read(uint16_t addr)
+		{
+			
+			return bus.ram.data[addr];
+			
+		}
+	
+///////////////////////////////////////////////////////////////////////////////
 // Display FUNCTIONS
 
 	/**
@@ -105,7 +284,7 @@ char code[MAX_MEM][50];
 	* @return uint8_t
 	*/
 		uint8_t dis_read(uint16_t addr){
-			return bus.ram.data[addr];
+			return bus_read(addr);
 		}
 		
 	/**
@@ -114,7 +293,7 @@ char code[MAX_MEM][50];
 	*/
 		uint8_t dis_write(uint16_t addr, uint8_t data){
 			if(addr >= displayMemLoc && addr <= displayMemLoc+displayMemLen){
-				bus.ram.data[addr] = data;
+				bus_write(addr, data);
 			}
 		}
 
@@ -191,8 +370,6 @@ char code[MAX_MEM][50];
 				printf("%s--- Display Instruction Opcode: %#X [%s] (%s)%s\n", ANSI_COLOR_YELLOW,disOPCode, lookupDis[disOPCode].name, lookupDis[disOPCode].label,  ANSI_COLOR_RESET);
 	
 			// Get Starting number of cycles from instruction struct
-				disCycles = lookupDis[disOPCode].cycles;
-				disCyclesInit = true;
 				
 			// Perform operation, calling the function defined in that element of the instruction struct array
 				(*lookupDis[disOPCode].operate)();
@@ -381,129 +558,6 @@ char code[MAX_MEM][50];
 			printf("\n");
 			
 		}
-	
-///////////////////////////////////////////////////////////////////////////////
-// Disassembler FUNCTIONS
-	
-	/**
-	* Write formatted hash string to console
-	* @return void
-	*/
-		void getHashString(void *hex, size_t size){
-			
-			if(size == 2){
-			
-				uint8_t num = *(uint8_t*) hex;
-				char hash[5];
-				sprintf(hash,"%02X", num);
-				printf("%s", hash);
-			
-			} else {
-			
-				uint16_t num = *(uint16_t*) hex;
-				char hash[] = "0000";
-				sprintf(hash,"%04X", num);
-				hash[size] = '\0';
-				printf("%s", hash);
-			
-			}
-		
-		}
-		
-	/**
-	* Pust hex string in dest.
-	* @return void
-	*/
-		void hex(uint16_t hex, size_t size, char * dest) {
-			size = (size > 8) ? 8 : size;
-			char tmp[9]; //max 8 chars
-			snprintf(tmp, 8,"%04X", hex);
-			tmp[size] = '\0';
-			strncpy(dest, tmp, size+1);
-		}
-		
-	/**
-	* Fill code[] with NOP instructions, ready for disassembler to fill in
-	* @return void
-	*/
-		void code_fillBlank(){
-	
-			char hashTemp[5];
-	
-			for(int i = 0; i <= MAX_MEM; i++){
-				char line[50] = "0x";
-				hex(i,4, hashTemp);
-				strcat(line, hashTemp);
-				strcat(line, ": NOP\t{IMP}");
-				strcpy(code[i], line);
-			}
-		
-		}
-		
-	/**
-	* Draw out surrounding instructions from code[] at given memory location
-	* @return void
-	*/
-		void code_draw(uint16_t addr){
-		
-			char lines[7][50];
-			
-			int lower = 0, count = 0, nullLines = 0;
-			uint16_t start;
-			uint16_t lastOpAddrFound = 0;
-			start = addr;
-			
-			//go backwards finding the 3 instructions before the current.
-			//in the dissassembler, inter-instruction memorylocations are padded with ---
-			//these are ignored as aren't instructions
-			//programs are always surrounded with NOP commands from memory + code[] init
-				while(lower < 3){
-					
-					start--;
-					
-					if(strcmp(code[start], "---") != 0){
-						lower++;
-						lastOpAddrFound = start;
-					} else {
-					
-						nullLines++;
-						if(nullLines == 6){
-							start = lastOpAddrFound;
-							
-							for(int i = 0; i <= 3-lower; i++){
-								strcpy(lines[i], "---");
-							}
-							
-							count = 3-lower;
-							lower = 3;
-						}
-						
-					}
-				
-				}
-				
-			//now move forward from this position, ignore --- and store the op line
-				while(count < 7){
-				
-					if(strcmp(code[start], "---") != 0){
-						strcpy(lines[count], code[start]);
-						count++;
-					}
-					
-					start++;
-				
-				}
-			
-			//finally now we have full lines, output them highlighting current instruction
-				for(int i = 0; i < 7; i++){
-					if(i == 3){
-						printf("%s%s%s\n", ANSI_COLOR_CYAN, lines[i], ANSI_COLOR_RESET);
-					} else {
-						printf("%s\n", lines[i]);
-					}
-				}
-		
-		}
 
 ///////////////////////////////////////////////////////////////////////////////
 // RAM FUNCTIONS
@@ -687,55 +741,6 @@ char code[MAX_MEM][50];
 			}
 			
 			printf("%s", ANSI_COLOR_RESET);
-			
-		}
-
-///////////////////////////////////////////////////////////////////////////////
-// BUS FUNCTIONS
-	
-	/**
-	* Add "deives" to bus struct. May be used in future to change bus attached devices
-	* @return void
-	*/
-		void bus_add_devices()
-		{
-		
-			printf("%sAdded Display device to bus.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
-			bus.dis = dis;
-		
-			printf("%sAdded Ram device to bus.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
-			bus.ram = ram;
-		
-		}
-	
-	/**
-	* Write to attached RAM through Bus
-	* @return void
-	*/
-		void bus_write(uint16_t addr, uint8_t data)
-		{
-		
-			bus.ram.data[addr] = data;
-			
-			//we're writing to display memory location, so update display
-				if(addr >= displayMemLoc && addr <= displayMemLoc+displayMemLen){
-					printf("--> Wrote 0X");
-					getHashString(&data, 2);
-					printf(" [%d] into display memory: 0X", data);
-					getHashString(&addr-displayMemLoc, 4);
-					printf("\n");
-				}
-		
-		}
-	
-	/**
-	* Read RAM through Bus
-	* @return uint8_t
-	*/
-		uint8_t bus_read(uint16_t addr)
-		{
-			
-			return bus.ram.data[addr];
 			
 		}
 	
@@ -2564,15 +2569,15 @@ char code[MAX_MEM][50];
 	*/
 		void drawAll(){
 			printf("\n");
-			code_draw(cpuLastOpAddr);
+			code_draw(cpuLastOpAddr, 7);
 			printf("\n");
+			cpu_draw();
+			printf("\n\n");
 			ram_draw(0x0000, 1, 16);
 			printf("\n");
 			ram_draw(0x8000, 2, 16);
 			printf("\n");
-			ram_draw(0x9000, 20, 16);
-			printf("\n");
-			cpu_draw();
+			ram_draw(0x9000, 19, 16);
 			printf("\n");
 			dis_draw();
 			printf("\n");
@@ -2640,7 +2645,7 @@ int main(int argc, char *argv[])
 		ram_load_program();
 		
 	//disassemble into code array
-		disassemble(0x8000, 0x801F);
+		disassemble(programStart, programStart+programSize);
 		
 	printf("\n%s6502 Powered On.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
 	
@@ -2658,19 +2663,21 @@ int main(int argc, char *argv[])
 			printf("\n");
 			
 			if(outputCodeOnExecute){
-				code_draw(cpuLastOpAddr);
+				code_draw(cpuLastOpAddr, 9);
 				printf("\n");
 			}
 			
-			if(outputMemOnExecute){
-				ram_draw(0x0000, 8, 16);
-				printf("\n");
-				ram_draw(0x8000, 8, 16);
-				printf("\n");
-			}
-		
 			if(outputCPUOnExecute){
 				cpu_draw();
+				printf("\n\n");
+			}
+			
+			if(outputMemOnExecute){
+				ram_draw(0x0000, 2, 16);
+				printf("\n");
+				ram_draw(0x8000, 4, 16);
+				printf("\n");
+				ram_draw(0x9000, 19, 16);
 				printf("\n");
 			}
 			
@@ -2706,19 +2713,21 @@ int main(int argc, char *argv[])
 							printf("\n");
 							
 							if(outputCodeOnExecute){
-								code_draw(cpuLastOpAddr);
+								code_draw(cpuLastOpAddr, 9);
 								printf("\n");
 							}
 							
-							if(outputMemOnExecute){
-								ram_draw(0x0000, 8, 16);
-								printf("\n");
-								ram_draw(0x8000, 8, 16);
-								printf("\n");
-							}
-						
 							if(outputCPUOnExecute){
 								cpu_draw();
+								printf("\n\n");
+							}
+							
+							if(outputMemOnExecute){
+								ram_draw(0x0000, 2, 16);
+								printf("\n");
+								ram_draw(0x8000, 4, 16);
+								printf("\n");
+								ram_draw(0x9000, 19, 16);
 								printf("\n");
 							}
 						
@@ -2735,11 +2744,11 @@ int main(int argc, char *argv[])
 			//memory dump
 				else if(strcmp(&consoleCommand[0], "m") == 0){
 					printf("Memory Dump\n");
-					ram_draw(0x0000, 4, 16);
+					ram_draw(0x0000, 2, 16);
 					printf("\n");
-					ram_draw(0x8000, 4, 16);
+					ram_draw(0x8000, 16, 16);
 					printf("\n");
-					ram_draw(0x9000, 9, 16);
+					ram_draw(0x9000, 19, 16);
 					ignoreNextEnter = true;
 				}
 				
@@ -2747,7 +2756,7 @@ int main(int argc, char *argv[])
 				else if(strcmp(&consoleCommand[0], "c") == 0){
 					printf("CPU Dump\n");
 					cpu_draw();
-					printf("\n");
+					printf("\n\n");
 					ignoreNextEnter = true;
 				}
 				
@@ -2760,12 +2769,12 @@ int main(int argc, char *argv[])
 			//program dump
 				else if(strcmp(&consoleCommand[0], "p") == 0){
 					printf("Program Dump\n");
-					code_draw(cpuLastOpAddr);
+					code_draw(cpuLastOpAddr, 15);
 					ignoreNextEnter = true;
 				}
 				
-			//program dump
-				else if(strcmp(&consoleCommand[0], "p") == 0){
+			//display dump
+				else if(strcmp(&consoleCommand[0], "d") == 0){
 					printf("Display Dump\n");
 					dis_draw();
 					ignoreNextEnter = true;

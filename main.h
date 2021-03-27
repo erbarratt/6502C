@@ -6,8 +6,10 @@
 #include <unistd.h>
 #include <math.h>
 
-#define MAX_MEM (1024 * 64)
+//265k
+	#define MAX_MEM (1024 * 64)
 
+//colors for printing
 	char ANSI_COLOR_RED[] = "\x1b[31m";
 	char ANSI_COLOR_GREEN[] = "\x1b[32m";
 	char ANSI_COLOR_YELLOW[] = "\x1b[33m";
@@ -16,61 +18,66 @@
 	char ANSI_COLOR_CYAN[] = "\x1b[36m";
 	char ANSI_COLOR_RESET[] = "\x1b[0m";
 
-typedef struct {
-	uint16_t PC;
-	uint8_t bCount;
-	uint8_t ccount;
-} DIS;
-
-typedef struct {
-
-	uint8_t data[MAX_MEM];
-
-} RAM;
-
-typedef struct {
-
-	RAM ram;
-	DIS dis;
-
-} Bus;
-
-typedef enum
-{
-
-	C = (1 << 0),	// Carry Bit
-	Z = (1 << 1),	// Zero
-	I = (1 << 2),	// Disable Interrupts
-	D = (1 << 3),	// Decimal Mode (unused in this implementation)
-	B = (1 << 4),	// Break
-	U = (1 << 5),	// Unused
-	V = (1 << 6),	// Overflow
-	N = (1 << 7),	// Negative
-	
-} FLAGS6502;
-
-typedef struct
-{
-
-	//Program Counter
+//display device
+	typedef struct {
 		uint16_t PC;
-		
-	//Stack Pointer
-		uint8_t SP;
-	
-	//Accumulator
-		uint8_t A;
-		
-	//Index Register X
-		uint8_t X;
-		
-	//Index Register Y
-		uint8_t Y;
-	
-	//processor status
-		FLAGS6502 status;
+		uint8_t bCount;
+		uint8_t ccount;
+	} DIS;
 
-} CPU;
+//ram device
+	typedef struct {
+	
+		uint8_t data[MAX_MEM];
+	
+	} RAM;
+
+//main bus
+	typedef struct {
+	
+		RAM ram;
+		DIS dis;
+	
+	} Bus;
+
+//bit field for cpu status
+	typedef enum
+	{
+	
+		C = (1 << 0),	// Carry Bit
+		Z = (1 << 1),	// Zero
+		I = (1 << 2),	// Disable Interrupts
+		D = (1 << 3),	// Decimal Mode (unused in this implementation)
+		B = (1 << 4),	// Break
+		U = (1 << 5),	// Unused
+		V = (1 << 6),	// Overflow
+		N = (1 << 7),	// Negative
+		
+	} FLAGS6502;
+
+//cpu
+	typedef struct
+	{
+	
+		//Program Counter
+			uint16_t PC;
+			
+		//Stack Pointer
+			uint8_t SP;
+		
+		//Accumulator
+			uint8_t A;
+			
+		//Index Register X
+			uint8_t X;
+			
+		//Index Register Y
+			uint8_t Y;
+		
+		//processor status
+			FLAGS6502 status;
+	
+	} CPU;
 
 // This structure and the following vector are used to compile and store
 // the opcode translation table. The 6502 can effectively have 256
@@ -92,6 +99,7 @@ typedef struct
 		uint8_t cycles;
 	} INSTRUCTION;
 
+//same but smaller for display struct
 	typedef struct
 	{
 		char name[50];
@@ -164,6 +172,7 @@ typedef struct
 // functionally identical to a NOP
 	uint8_t cpu_XXX();
 
+//display function declarations
 	uint8_t dis_NOP();
 	uint8_t dis_ACB();
 	uint8_t dis_ANB();
