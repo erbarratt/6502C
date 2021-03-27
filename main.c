@@ -9,7 +9,13 @@ char code[MAX_MEM][50];
 
 // Display range
 	uint16_t displayMemLoc = 0x9000;
-	size_t displayMemLen = 0x0040;
+	uint16_t displayMemLen = 0x0130;
+	uint16_t disBufferOffset = 0x0010;
+	uint16_t disConsoleOffset = 0x0030;
+	uint16_t disConsoleLength = 256;
+	uint8_t disOPCode = 0x0000;
+	uint8_t disCycles = 0;
+	bool disCyclesInit = false;
 
 // Represents the working input value to the ALU
 	uint8_t cpuFetched = 0x00;
@@ -47,6 +53,17 @@ char code[MAX_MEM][50];
 //start addr of program
 	uint16_t programStart = 0x0000;
 	
+/**
+* Display function opcode lookup table
+*/
+	INST_DIS lookupDis[256] = {
+		{"NOP", "No Update", &dis_NOP,1 },                  //0x0000
+		{"ACB", "Add Character to Buffer", &dis_ACB,1 },    //0x0001
+		{"ANB", "Add Number to Buffer", &dis_ANB,1 },       //0x0002
+		{"WRB", "Write Buffer to Console", &dis_WRB,1 },    //0x0003
+		{"CLC", "Clear Console", &dis_CLC,1 },              //0x0004
+		{"CLB", "Clear Buffer", &dis_CLB,1 },               //0x0005
+	};
 	
 /**
 * Assembles the translation table. It's big, it's ugly, but it yields a convenient way
@@ -61,7 +78,7 @@ char code[MAX_MEM][50];
 
 * The table is one big initialiser list of initialiser lists...
 */
-	INSTRUCTION lookupM[256] = {
+	INSTRUCTION lookupCpu[256] = {
 		{"BRK", "Break Interrupt, Implied", &cpu_BRK, &cpu_IMM, 7 },	                {"ORA", "Or with A, X-indexed, Indirect", &cpu_ORA, &cpu_IZX, 6 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 3 },	                {"ORA", "OR with A, Zero Paged", &cpu_ORA, &cpu_ZP0, 3 },	                {"ASL", "Arithmetic Shift Left, Zero Paged", &cpu_ASL, &cpu_ZP0, 5 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	    {"PHP", "Push Status to Stack, Implied", &cpu_PHP, &cpu_IMP, 3 },	{"ORA", "OR with A, Immediate", &cpu_ORA, &cpu_IMM, 2 },	                        {"ASL", "Arithmetic shift Left, Implied", &cpu_ASL, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"ORA", "OR with A, Absolute", &cpu_ORA, &cpu_ABS, 4 },	                        {"ASL", "Arithmetic Shift Left, Absolute", &cpu_ASL, &cpu_ABS, 6 },	            {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
 		{"BPL", "Branch on Plus, Relative", &cpu_BPL, &cpu_REL, 2 },	                {"ORA", "Or with A, Y-indexed, Indirect", &cpu_ORA, &cpu_IZY, 5 },	        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	                {"ORA", "OR with A, Zero Paged, X-indexed", &cpu_ORA, &cpu_ZPX, 4 },	        {"ASL", "Arithmetic Shift Left, Zero Paged, X-indexed", &cpu_ASL, &cpu_ZPX, 6 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },	    {"CLC", "Clear Carry, Implied", &cpu_CLC, &cpu_IMP, 2 },            	{"ORA", "OR with A, Absolute, Y-indexed", &cpu_ORA, &cpu_ABY, 4 },	            {"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 2 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },	{"???", "Illegal, Implied", &cpu_NOP, &cpu_IMP, 4 },	            {"ORA", "OR with A, Absolute, X-indexed", &cpu_ORA, &cpu_ABX, 4 },	            {"ASL", "Arithmetic Shift Left, Absolute, X-indexed", &cpu_ASL, &cpu_ABX, 7 },	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 7 },
 		{"JSR", "Jump Subroutine, Absolute", &cpu_JSR, &cpu_ABS, 6 },	            {"AND", "AND, X-indexed, Indirect", &cpu_AND, &cpu_IZX, 6 },	                {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 8 },	{"BIT", "Bit Test, Zero Paged", &cpu_BIT, &cpu_ZP0, 3 },	            {"AND", "AND, Zero Paged", &cpu_AND, &cpu_ZP0, 3 },	                        {"ROL", "Rotate Left, Zero Paged", &cpu_ROL, &cpu_ZP0, 5 },	                        {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 5 },	    {"PLP", "Pull Status from Stack, Implied", &cpu_PLP, &cpu_IMP, 4 },	{"AND", "AND, Immediate", &cpu_AND, &cpu_IMM, 2 },	                            {"ROL", "Rotate Left, Implied", &cpu_ROL, &cpu_IMP, 2 },            	{"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 2 },	{"BIT", "Bit Test, Absolute", &cpu_BIT, &cpu_ABS, 4 },	        {"AND", "AND, Absolute", &cpu_AND, &cpu_ABS, 4 },	                            {"ROL", "Rotate Left, Absolute", &cpu_ROL, &cpu_ABS, 6 },	                    {"???", "Illegal, Implied", &cpu_XXX, &cpu_IMP, 6 },
@@ -83,66 +100,287 @@ char code[MAX_MEM][50];
 ///////////////////////////////////////////////////////////////////////////////
 // Display FUNCTIONS
 
-	void dis_clear(){
-	
-		for(uint16_t i = 16; i < 144; i++){
-			
-			if(i % 2 == 0 || i == 16){
-				bus.dis.console[i] = 0xFF;
-				bus.ram.data[i+displayMemLoc] = 0xFF;
-			} else {
-				bus.dis.console[i] = 0x20;
-				bus.ram.data[i+displayMemLoc] = 0x20;
+	/**
+	* Read from a memory location
+	* @return uint8_t
+	*/
+		uint8_t dis_read(uint16_t addr){
+			return bus.ram.data[addr];
+		}
+		
+	/**
+	* Write to a memory location if within range
+	* @return uint8_t
+	*/
+		uint8_t dis_write(uint16_t addr, uint8_t data){
+			if(addr >= displayMemLoc && addr <= displayMemLoc+displayMemLen){
+				bus.ram.data[addr] = data;
+			}
+		}
+
+	/**
+	* Clear the console with blank chars (0x20 [32]), then reset console count
+	* @return void
+	*/
+		void dis_console_clear(){
+		
+			for(uint16_t i = displayMemLoc+disConsoleOffset; i < displayMemLoc+displayMemLen; i++){
+				bus.ram.data[i] = ' ';
 			}
 			
+			dis.ccount = 0;
+		
 		}
-	
-	}
-	
-	void dis_draw(){
 		
-		//10 dash's
-			printf("\n");
-		
-		//lines
-			uint16_t addr = 16;
-			for(uint16_t i = 0; i < 8; i++){
+	/**
+	* Clear the buffer with blank chars (0x20 [32])
+	* @return void
+	*/
+		void dis_buffer_clear(){
+
+			for(uint16_t i = 0; i < 32; i++){
+				dis_write(displayMemLoc+disBufferOffset+i, ' ');
+			}
 			
-				printf("| >");
+			dis.bCount = 0;
+			
+		}
+		
+	/**
+	* Clear the display op memory location
+	* @return void
+	*/
+		void dis_clear_op(){
+			bus.ram.data[displayMemLoc] = 0x0000;
+		}
+		
+	/**
+	* Reset all on the display
+	* @return void
+	*/
+		void dis_reset(){
+			
+			//program counter basically always looks at this mem addr
+				dis.PC = displayMemLoc;
+			
+			//make sure first instruction is always No Update
+				dis_clear_op();
+			
+			//clear buffer
+				dis_buffer_clear();
+			
+			//clear console
+				dis_console_clear();
+			
+		}
+		
+	/**
+	* Parse an opcode and fire off it's function using the display lookup array
+	* @return void
+	*/
+		void dis_execute(){
+		
+			printf("%s---------------------------------------------%s\n\n", ANSI_COLOR_CYAN, ANSI_COLOR_RESET);
 				
-				bool charDisplay = false;
+			// Read next instruction byte. This 8-bit value is used to index
+			// the translation table to get the relevant information about
+			// how to implement the instruction
+				disOPCode = dis_read(dis.PC);
 				
-				for(uint16_t j = 0; j < 16; j++){
+			//get opcode struct and display info about this operation
+				printf("%s--- Display Instruction Opcode: %#X [%s] (%s)%s\n", ANSI_COLOR_YELLOW,disOPCode, lookupDis[disOPCode].name, lookupDis[disOPCode].label,  ANSI_COLOR_RESET);
+	
+			// Get Starting number of cycles from instruction struct
+				disCycles = lookupDis[disOPCode].cycles;
+				disCyclesInit = true;
 				
-					if(j == 0 || j % 2 == 0){
+			// Perform operation, calling the function defined in that element of the instruction struct array
+				(*lookupDis[disOPCode].operate)();
+		
+		}
+		
+	/**
+	* Display Function: No Operation
+	* @return uint8_t
+	*/
+		uint8_t dis_NOP(){
+			dis_clear_op();
+		}
+		
+	/**
+	* Display Function: Add Character to Buffer
+	* @return uint8_t
+	*/
+		uint8_t dis_ACB(){
+			uint8_t value = dis_read(dis.PC+1);
+			if(dis.bCount < 32){
+				dis_write(displayMemLoc+disBufferOffset+dis.bCount, value);
+				dis.bCount++;
+			}
+			dis_clear_op();
+			return 0;
+		}
+		
+	/**
+	* Display Function: Convert literal number to characters and add to Buffer
+	* @return uint8_t
+	*/
+		uint8_t dis_ANB(){
+			dis_clear_op();
+			return 0;
+		}
+		
+	/**
+	* Display Function: Write the contents of the buffer to the next line of the console,
+	* shifting the console contents if already full
+	* @return uint8_t
+	*/
+		uint8_t dis_WRB(){
+		
+			//shift console arrays down
+				if(dis.ccount > 7){
+				
+					char lines[7][32];
+					int character = 0;
+					
+					uint16_t memStart = displayMemLoc+disConsoleOffset+32;  //0x9050 ignore first 32 as that will be overwritten.
+					uint16_t memUpper = displayMemLoc+displayMemLen;        //0x9130
+					
+					for(uint16_t i = memStart; i < memUpper; i++){
 						
-						if(bus.dis.console[addr] == 0xFF){
-							charDisplay = true;
+						//start from line two in console as line 1 is being discarded
+						if(i >= memStart && i < memStart+32){
+						
+							lines[0][character] = dis_read(i);
+						
+						} else if(i >= memStart+32 && i < memStart+64){
+						
+							lines[1][character] = dis_read(i);
+						
+						} else if(i >= memStart+64 && i < memStart+96){
+						
+							lines[2][character] = dis_read(i);
+						
+						} else if(i >= memStart+96 && i < memStart+128){
+						
+							lines[3][character] = dis_read(i);
+						
+						} else if(i >= memStart+128 && i < memStart+160){
+						
+							lines[4][character] = dis_read(i);
+						
+						} else if(i >= memStart+160 && i < memStart+192){
+						
+							lines[5][character] = dis_read(i);
+						
+						} else if(i >= memStart+192){
+						
+							lines[6][character] = dis_read(i);
+						
 						}
 						
-						printf(" ");
+						character++;
 						
-					} else {
-				
-						if(charDisplay){
-							printf("%c", bus.dis.console[addr]);
-						} else {
-							printf("%d", bus.dis.console[addr]);
+						if(character % 32 == 0 && i > memStart){
+							character = 0;
 						}
-				
+						
 					}
 					
-					addr++;
+					//now go through lines array, starting at start of console memory.
+						memStart = displayMemLoc+disConsoleOffset; //reset memStart to start of console now
+						uint8_t line = 0;
+						character = 0;
+						for(uint16_t i = memStart; i < memUpper; i++){
+
+							if(character == 0 && i > memStart){
+								line++;
+							}
+
+							if(line == 7){
+
+								dis_write(i, ' ');
+
+							} else {
+
+								dis_write(i, lines[line][character]);
+
+							}
+							
+							character++;
+						
+							if(character % 32 == 0 && i > memStart){
+								character = 0;
+							}
+
+						}
+						
+					//set buffer to add to last console line location
+						dis.ccount = 7;
 				
 				}
 				
+			//now write up to 32 buffer bytes to last line location in console memory
+				for(uint8_t i = 0; i < 32; i++){
+				
+					dis_write((displayMemLoc+disConsoleOffset+(32*dis.ccount)+i), bus.ram.data[displayMemLoc+disBufferOffset+i]);
+				
+				}
+				
+			dis_clear_op();
+			dis_buffer_clear();
+			dis.ccount++;
+			return 0;
+		
+		}
+		
+	/**
+	* Display Function: Clear the console
+	* @return uint8_t
+	*/
+		uint8_t dis_CLC(){
+			dis_clear_op();
+			return 0;
+		}
+		
+	/**
+	* Display Function: Clear the buffer
+	* @return uint8_t
+	*/
+		uint8_t dis_CLB(){
+			dis_clear_op();
+			return 0;
+		}
+	
+	/**
+	* Draw the whole console
+	* @return void
+	*/
+		void dis_draw(){
+			
+			//10 dash's
 				printf("\n");
 			
-			}
-		
-		printf("\n");
-		
-	}
+			//lines
+				uint16_t addr = displayMemLoc+disConsoleOffset;
+				for(uint16_t i = 0; i < 8; i++){
+				
+					printf("| >");
+					
+					for(uint16_t j = 0; j < 32; j++){
+					
+						printf("%c", bus.ram.data[addr]);
+						addr++;
+					
+					}
+					
+					printf("\n");
+				
+				}
+			
+			printf("\n");
+			
+		}
 	
 ///////////////////////////////////////////////////////////////////////////////
 // Disassembler FUNCTIONS
@@ -319,7 +557,82 @@ char code[MAX_MEM][50];
 			// Convert hex string into bytes for RAM
 			//A2 0A 8E 00 00 A2 03 8E 01 00 AC 00 00 A9 00 18 6D 01 00 88 D0 FA 8D 02 00 EA EA EA
 			//uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0x8D,0x00,0x90,0xEA,0xEA,0XEA,0XEA };
-			uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0xA2,0x00,0x8E,0x10,0x90,0x8D,0x11,0x90};
+			//uint8_t prog[] = {0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0xA2,0x00,0x8E,0x10,0x90,0x8D,0x11,0x90};
+			//uint8_t prog[] = {0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90};
+			
+			/*
+			*
+				LDA #$48 ;H
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$65 ;e
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$6C ;l
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$6C ;l
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$6F ;o
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$20 ;space
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$57 ;W
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$6F ;o
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$72 ;r
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$6C ;l
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDA #$64 ;l
+				STA $9001
+				LDX #$1
+				STX $9000
+				
+				LDX #$3
+				STX $9000
+			*/
+			
+			uint8_t prog[] = {
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x64,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x64,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x64,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x64,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x64,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x64,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x64,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90,
+				0xA9,0x48,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x20,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x57,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6F,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x72,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x6C,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA9,0x65,0x8D,0x01,0x90,0xA2,0x01,0x8E,0x00,0x90,0xA2,0x03,0x8E,0x00,0x90
+			};
 			programSize = sizeof prog / sizeof prog[0];
 			printf("%d\n", programSize);
 			programStart = 0x8000;
@@ -406,10 +719,9 @@ char code[MAX_MEM][50];
 			
 			//we're writing to display memory location, so update display
 				if(addr >= displayMemLoc && addr <= displayMemLoc+displayMemLen){
-					bus.dis.console[addr-displayMemLoc] = data;
 					printf("--> Wrote 0X");
 					getHashString(&data, 2);
-					printf(" [%d] into display buffer: 0X", data);
+					printf(" [%d] into display memory: 0X", data);
 					getHashString(&addr-displayMemLoc, 4);
 					printf("\n");
 				}
@@ -628,7 +940,7 @@ char code[MAX_MEM][50];
 	* @return uint8_t
 	 */
 		uint8_t cpu_fetch(){
-			if (lookupM[cpuOPCode].addrmode != &cpu_IMP){
+			if (lookupCpu[cpuOPCode].addrmode != &cpu_IMP){
 				cpuFetched = cpu_read(cpuAddrAbs);
 			}
 			return cpuFetched;
@@ -816,7 +1128,7 @@ char code[MAX_MEM][50];
 						cpuOPCode = cpu_read(cpu.PC);
 						
 					//get opcode struct and display info about this operation
-						printf("%s--- Instruction Opcode: %#X [%s] (%s)%s\n", ANSI_COLOR_YELLOW,cpuOPCode, lookupM[cpuOPCode].name, lookupM[cpuOPCode].label,  ANSI_COLOR_RESET);
+						printf("%s--- Instruction Opcode: %#X [%s] (%s)%s\n", ANSI_COLOR_YELLOW,cpuOPCode, lookupCpu[cpuOPCode].name, lookupCpu[cpuOPCode].label,  ANSI_COLOR_RESET);
 						
 					// Increment program counter, we have now read the cpuOPCode byte
 						cpu.PC++;
@@ -824,18 +1136,18 @@ char code[MAX_MEM][50];
 				//-------------------------------------------------------------------------------
 	
 			// Get Starting number of cycles from instruction struct
-				cpuCycles = lookupM[cpuOPCode].cycles;
+				cpuCycles = lookupCpu[cpuOPCode].cycles;
 				cuCyclesInit = true;
 	
 			// Perform fetch of intermmediate data using the
 			// required addressing mode
-				uint8_t additional_cycle1 = (*lookupM[cpuOPCode].addrmode)();
+				uint8_t additional_cycle1 = (*lookupCpu[cpuOPCode].addrmode)();
 	
 			//1+ cycles
 				//-------------------------------------------------------------------------------
 				
 					// Perform operation, calling the function defined in that element of the instruction struct array
-						uint8_t additional_cycle2 = (*lookupM[cpuOPCode].operate)();
+						uint8_t additional_cycle2 = (*lookupCpu[cpuOPCode].operate)();
 						
 				//-------------------------------------------------------------------------------
 	
@@ -1279,7 +1591,7 @@ char code[MAX_MEM][50];
 			cpu_set_flag(C, (cpuTemp & 0xFF00) > 0);
 			cpu_set_flag(Z, (cpuTemp & 0x00FF) == 0x00);
 			cpu_set_flag(N, cpuTemp & 0x80);
-			if (lookupM[cpuOPCode].addrmode == &cpu_IMP)
+			if (lookupCpu[cpuOPCode].addrmode == &cpu_IMP)
 				cpu_set_a(cpuTemp & 0x00FF);
 			else
 				cpu_write(cpuAddrAbs, cpuTemp & 0x00FF);
@@ -1739,7 +2051,7 @@ char code[MAX_MEM][50];
 			
 			printf("---Set V,Z,N\n");
 			
-			if (lookupM[cpuOPCode].addrmode == &cpu_IMP){
+			if (lookupCpu[cpuOPCode].addrmode == &cpu_IMP){
 				cpu_set_a(cpuTemp & 0x00FF);
 				printf("---A set to %#02X [%d]\n", cpu.A, cpu.A);
 			} else {
@@ -1855,7 +2167,7 @@ char code[MAX_MEM][50];
 			cpu_set_flag(C, cpuTemp & 0xFF00);
 			cpu_set_flag(Z, (cpuTemp & 0x00FF) == 0x0000);
 			cpu_set_flag(N, cpuTemp & 0x0080);
-			if (lookupM[cpuOPCode].addrmode == &cpu_IMP)
+			if (lookupCpu[cpuOPCode].addrmode == &cpu_IMP)
 				cpu_set_a(cpuTemp & 0x00FF);
 			else
 				cpu_write(cpuAddrAbs, cpuTemp & 0x00FF);
@@ -1875,7 +2187,7 @@ char code[MAX_MEM][50];
 			cpu_set_flag(C, cpuFetched & 0x01);
 			cpu_set_flag(Z, (cpuTemp & 0x00FF) == 0x00);
 			cpu_set_flag(N, cpuTemp & 0x0080);
-			if (lookupM[cpuOPCode].addrmode == &cpu_IMP)
+			if (lookupCpu[cpuOPCode].addrmode == &cpu_IMP)
 				cpu_set_a(cpuTemp & 0x00FF);
 			else
 				cpu_write(cpuAddrAbs, cpuTemp & 0x00FF);
@@ -2105,7 +2417,7 @@ char code[MAX_MEM][50];
 		
 				// Read instruction, and get its readable name
 				uint8_t opcode = bus_read((uint16_t)addr); addr++;
-				strcat(line, lookupM[opcode].name);
+				strcat(line, lookupCpu[opcode].name);
 				strcat(line, "\t");
 		
 				// Get oprands from desired locations, and form the
@@ -2113,11 +2425,11 @@ char code[MAX_MEM][50];
 				// routines mimmick the actual fetch routine of the
 				// 6502 in order to get accurate data as part of the
 				// instruction
-				if (lookupM[opcode].addrmode == &cpu_IMP){
+				if (lookupCpu[opcode].addrmode == &cpu_IMP){
 				
 					strcat(line, "\t{IMP}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_IMM){
+				} else if (lookupCpu[opcode].addrmode == &cpu_IMM){
 				
 					strcpy(code[addr], "---");
 					value = bus_read(addr); addr++;
@@ -2126,7 +2438,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, "\t{IMM}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_ZP0){
+				} else if (lookupCpu[opcode].addrmode == &cpu_ZP0){
 				
 					strcpy(code[addr], "---");
 					lo = bus_read(addr); addr++;
@@ -2136,7 +2448,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, "\t{ZP0}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_ZPX){
+				} else if (lookupCpu[opcode].addrmode == &cpu_ZPX){
 				
 					strcpy(code[addr], "---");
 					lo = bus_read(addr); addr++;
@@ -2146,7 +2458,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, ", X\t{ZPX}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_ZPY){
+				} else if (lookupCpu[opcode].addrmode == &cpu_ZPY){
 				
 					strcpy(code[addr], "---");
 					lo = bus_read(addr); addr++;
@@ -2156,7 +2468,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, ", Y\t{ZPY}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_IZX){
+				} else if (lookupCpu[opcode].addrmode == &cpu_IZX){
 				
 					strcpy(code[addr], "---");
 					lo = bus_read(addr); addr++;
@@ -2166,7 +2478,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, ", X)\t{IZX}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_IZY){
+				} else if (lookupCpu[opcode].addrmode == &cpu_IZY){
 				
 					strcpy(code[addr], "---");
 					lo = bus_read(addr); addr++;
@@ -2176,7 +2488,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, "), Y\t{IZY}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_ABS){
+				} else if (lookupCpu[opcode].addrmode == &cpu_ABS){
 				
 					strcpy(code[addr], "---");
 					lo = bus_read(addr); addr++;
@@ -2187,7 +2499,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, "\t{ABS}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_ABX){
+				} else if (lookupCpu[opcode].addrmode == &cpu_ABX){
 				
 					strcpy(code[addr], "---");
 					lo = bus_read(addr); addr++;
@@ -2198,7 +2510,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, ", X\t{ABX}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_ABY){
+				} else if (lookupCpu[opcode].addrmode == &cpu_ABY){
 				
 					strcpy(code[addr], "---");
 					lo = bus_read(addr); addr++;
@@ -2209,7 +2521,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, ", Y\t{ABY}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_IND){
+				} else if (lookupCpu[opcode].addrmode == &cpu_IND){
 				
 					strcpy(code[addr], "---");
 					lo = bus_read(addr); addr++;
@@ -2220,7 +2532,7 @@ char code[MAX_MEM][50];
 					strcat(line, hashTemp);
 					strcat(line, ")\t{IND}");
 					
-				} else if (lookupM[opcode].addrmode == &cpu_REL){
+				} else if (lookupCpu[opcode].addrmode == &cpu_REL){
 				
 					strcpy(code[addr], "---");
 					value = bus_read(addr); addr++;
@@ -2254,11 +2566,11 @@ char code[MAX_MEM][50];
 			printf("\n");
 			code_draw(cpuLastOpAddr);
 			printf("\n");
-			ram_draw(0x0000, 2, 16);
+			ram_draw(0x0000, 1, 16);
 			printf("\n");
 			ram_draw(0x8000, 2, 16);
 			printf("\n");
-			ram_draw(0x9000, 2, 16);
+			ram_draw(0x9000, 20, 16);
 			printf("\n");
 			cpu_draw();
 			printf("\n");
@@ -2321,9 +2633,6 @@ int main(int argc, char *argv[])
 	//clear ram of any standing data
 		ram_clear();
 		
-	//clear display memory, also writes initial mem state back to ram
-		dis_clear();
-		
 	//fill dissassemble array with starting state of memory (NOP's)
 		code_fillBlank();
 	
@@ -2334,6 +2643,9 @@ int main(int argc, char *argv[])
 		disassemble(0x8000, 0x801F);
 		
 	printf("\n%s6502 Powered On.%s\n", ANSI_COLOR_GREEN, ANSI_COLOR_RESET);
+	
+	//reset display
+		dis_reset();
 	
 	//turn on the system
 		cpu_reset();
@@ -2386,6 +2698,7 @@ int main(int argc, char *argv[])
 						ignoreNextEnter = false;
 					} else {
 						cpu_execute();
+						dis_execute();
 						if(outputAllOnExecute){
 							drawAll();
 						} else {

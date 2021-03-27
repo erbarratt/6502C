@@ -17,7 +17,9 @@
 	char ANSI_COLOR_RESET[] = "\x1b[0m";
 
 typedef struct {
-	uint8_t console[128];
+	uint16_t PC;
+	uint8_t bCount;
+	uint8_t ccount;
 } DIS;
 
 typedef struct {
@@ -90,6 +92,14 @@ typedef struct
 		uint8_t cycles;
 	} INSTRUCTION;
 
+	typedef struct
+	{
+		char name[50];
+		char label[50];
+		uint8_t     (*operate )(void);
+		uint8_t cycles;
+	} INST_DIS;
+
 // Addressing Modes =============================================
 // The 6502 has a variety of addressing modes to access data in
 // memory, some of which are direct and some are indirect (like
@@ -153,3 +163,10 @@ typedef struct
 // I capture all "unofficial" opcodes with this function. It is
 // functionally identical to a NOP
 	uint8_t cpu_XXX();
+
+	uint8_t dis_NOP();
+	uint8_t dis_ACB();
+	uint8_t dis_ANB();
+	uint8_t dis_WRB();
+	uint8_t dis_CLC();
+	uint8_t dis_CLB();
