@@ -761,6 +761,9 @@ char code[MAX_MEM][50];
 			printf("%sMemLoc\t", ANSI_COLOR_CYAN);
 			for (int col = 0; col < nColumns; col++)
 			{
+				if(col == 8){
+					printf("   ");
+				}
 				printf("  %01X",  col);
 			}
 			printf("%s\n",  ANSI_COLOR_RESET);
@@ -774,6 +777,11 @@ char code[MAX_MEM][50];
 				
 				for (int col = 0; col < nColumns; col++)
 				{
+				
+					if(col == 8){
+						printf("   ");
+					}
+				
 					if(bus.ram.data[nAddr] == 0){
 						printf(" 00");
 					} else {
@@ -782,7 +790,21 @@ char code[MAX_MEM][50];
 					nAddr += 1;
 				}
 				
-				printf("\n");
+				printf("\t|");
+				
+				nAddr -= nColumns;
+				for (int col = 0; col < nColumns; col++)
+				{
+					if ((unsigned char)bus.ram.data[nAddr] >= ' ' && (unsigned char)bus.ram.data[nAddr] <= '~'){
+						printf("%c",  bus.ram.data[nAddr]);
+					} else {
+						printf(".");
+					}
+					
+					nAddr += 1;
+				}
+				
+				printf("|\n");
 				
 			}
 			
