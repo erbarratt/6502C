@@ -19,6 +19,8 @@
 	char ANSI_COLOR_RESET[] = "\x1b[0m";
 
 //display device
+//This is a pseudo device, and not representative of any real hardware.
+//it's more to serve as a visual aid in seeing what the CPU is doing, and exploring memory spaces.
 	typedef struct {
 		uint16_t PC;
 		uint8_t bCount;

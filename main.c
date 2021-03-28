@@ -403,6 +403,13 @@ char code[MAX_MEM][50];
 	* @return uint8_t
 	*/
 		uint8_t dis_ANB(){
+		
+			int num = dis_read(dis.PC+1);
+			num = '0' + num;
+			if(dis.bCount < 32){
+				dis_write(displayMemLoc+disBufferOffset+dis.bCount, (uint8_t)num, true);
+				dis.bCount++;
+			}
 			dis_clear_op();
 			return 0;
 		}
@@ -759,24 +766,23 @@ char code[MAX_MEM][50];
 		{
 			
 			printf("%sMemLoc\t", ANSI_COLOR_CYAN);
-			for (int col = 0; col < nColumns; col++)
-			{
+			
+			for (int col = 0; col < nColumns; col++){
 				if(col == 8){
 					printf("   ");
 				}
 				printf("  %01X",  col);
 			}
+			
 			printf("%s\n",  ANSI_COLOR_RESET);
 			
-			for (int row = 0; row < nRows; row++)
-			{
+			for (int row = 0; row < nRows; row++){
 			
 				printf("%s0x", ANSI_COLOR_MAGENTA);
 				getHashString(&nAddr, 3);
 				printf("x\t%s", ANSI_COLOR_RESET);
 				
-				for (int col = 0; col < nColumns; col++)
-				{
+				for (int col = 0; col < nColumns; col++){
 				
 					if(col == 8){
 						printf("   ");
@@ -793,8 +799,12 @@ char code[MAX_MEM][50];
 				printf("\t|");
 				
 				nAddr -= nColumns;
-				for (int col = 0; col < nColumns; col++)
-				{
+				for (int col = 0; col < nColumns; col++){
+					
+					if(col == 8){
+						printf("| |");
+					}
+				
 					if ((unsigned char)bus.ram.data[nAddr] >= ' ' && (unsigned char)bus.ram.data[nAddr] <= '~'){
 						printf("%c",  bus.ram.data[nAddr]);
 					} else {
