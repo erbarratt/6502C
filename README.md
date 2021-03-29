@@ -12,7 +12,7 @@ His tutorials have inspired me to dive lower down in languages.
 This C source is a nearly direct port of his code, moving from OOP to functional
 and adding some helper functions + a pseudo display device to hook into the bus.
 	
-All cpu_<OPCODE> + cpu_<ADDRESSMODE> functions are basically unmodified, as well as the lookup array of INSTRUCTION structs.
+All cpu_&lt;OPCODE&gt; + cpu_&lt;ADDRESSMODE&gt; functions are basically unmodified, as well as the lookup array of INSTRUCTION structs.
 
 #Compile
 Download the repository and then use
